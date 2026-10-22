@@ -1,6 +1,7 @@
 import { el, api } from './common.js';
 
 const $ = (id) => document.getElementById(id);
+let aiSearch = false;
 
 load();
 loadGoogle(false);
@@ -35,6 +36,7 @@ async function load() {
     message('fehler', err.message);
     return;
   }
+  aiSearch = Boolean(d.aiSearch);
   renderAi(d.ai, d.notify);
   $('warnungen').replaceChildren(...d.warnings.map((w) => el('div', { class: 'fehler', text: w })));
   renderReview(d.review);
@@ -131,7 +133,22 @@ function isbnCell(e) {
   }
   return el('td', {},
     el('div', { class: 'neben', text: e.isbn_status === 'rejected' ? 'Vorschlag verworfen – Link führt zur Amazon-Suche' : e.isbn_status ? 'Keine ISBN gefunden – Link führt zur Amazon-Suche' : 'Noch nicht gesucht (Quelle nicht erreichbar)' }),
-    el('button', { class: 'textlink', type: 'button', text: 'Erneut suchen', onclick: isbnAct('retry') }),
+    el('div', { class: 'knoepfe' },
+      el('button', { class: 'textlink', type: 'button', text: 'Erneut suchen', onclick: isbnAct('retry') }),
+      aiSearch ? el('button', {
+        class: 'sekundaer',
+        type: 'button',
+        text: 'Mit KI suchen',
+        onclick: (ev) => {
+          ev.target.disabled = true;
+          ev.target.textContent = 'KI sucht … (bis zu 1 Minute)';
+          act(async () => {
+            const r = await api(`/api/admin/editions/${e.id}/isbn`, { method: 'POST', body: { action: 'ai' } });
+            if (r.found === false) throw new Error(`Die KI hat für „${e.title}“ keine ISBN gefunden, die sich belegen lässt.`);
+          });
+        },
+      }) : null,
+    ),
   );
 }
 
@@ -195,6 +212,7 @@ function renderWorks(works, categories) {
       el('td', {}, select, w.category_locked ? el('div', { class: 'neben klein', text: 'von dir festgelegt' }) : null),
       el('td', {},
         w.amazon ? el('a', { href: w.amazon.url, target: '_blank', rel: 'noopener noreferrer', text: w.amazon.exact ? 'prüfen' : 'nur Suche – prüfen' }) : null,
+        w.amazon && !w.amazon.exact && aiSearch ? aiWorkButton(w, isbn) : null,
         el('div', { class: 'knoepfe' }, isbn, el('button', {
           class: 'sekundaer', type: 'button', text: 'Speichern',
           onclick: () => act(() => api(`/api/admin/works/${w.id}/isbn`, { method: 'POST', body: { isbn: isbn.value } })),
@@ -206,6 +224,38 @@ function renderWorks(works, categories) {
       })),
     );
   }), 'Noch keine Bücher.'));
+}
+
+// KI-Suche für ein Buch der Rangliste: Treffer ins ISBN-Feld eintragen, Speichern macht der Admin
+function aiWorkButton(w, isbnInput) {
+  const out = el('div', { class: 'neben klein' });
+  const button = el('button', {
+    class: 'textlink',
+    type: 'button',
+    text: 'Mit KI suchen',
+    onclick: async () => {
+      button.disabled = true;
+      out.textContent = 'KI sucht … (bis zu 1 Minute)';
+      try {
+        const r = await api(`/api/admin/works/${w.id}/ai-isbn`, { method: 'POST' });
+        if (!r.found) {
+          out.textContent = 'Keine belegbare ISBN gefunden.';
+        } else {
+          const p = r.pick;
+          isbnInput.value = p.isbn;
+          out.replaceChildren(
+            `Gefunden: ${p.title}${p.publisher ? `, ${p.publisher}` : ''}${p.year ? ` ${p.year}` : ''} (ISBN ${p.isbn}). `,
+            r.link ? el('a', { href: r.link, target: '_blank', rel: 'noopener noreferrer', text: 'Bei Amazon prüfen' }) : '',
+            ', dann „Speichern“.',
+          );
+        }
+      } catch (err) {
+        out.textContent = err.message;
+      }
+      button.disabled = false;
+    },
+  });
+  return el('div', {}, button, out);
 }
 
 function renderFlagged(items) {

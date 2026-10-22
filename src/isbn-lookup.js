@@ -7,6 +7,7 @@ import { db, normalize, firstAuthorKey } from './db.js';
 import { config } from './config.js';
 import { cleanIsbn, validIsbn } from './amazon.js';
 import { googleFetch } from './google-books.js';
+import { aiFindIsbn, aiSearchEnabled } from './ai-isbn.js';
 
 const TIMEOUT = 8000;
 
@@ -126,9 +127,20 @@ export async function lookupIsbn(editionId) {
   results.forEach((r, i) => {
     if (r.status === 'rejected') console.warn(`ISBN-Suche (${['DNB', 'Google', 'Open Library'][i]}) fehlgeschlagen:`, r.reason?.message);
   });
-  if (results.every((r) => r.status === 'rejected')) throw new Error('Keine Buchquelle erreichbar.');
+  const allFailed = results.every((r) => r.status === 'rejected');
   const candidates = results.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
-  const result = decide(e.title, e.authors, candidates);
+  let result = allFailed ? { status: 'none', pick: null } : decide(e.title, e.authors, candidates);
+
+  // Nichts gefunden: KI-Websuche als letzter Versuch (immer nur Vorschlag)
+  if (result.status === 'none' && aiSearchEnabled()) {
+    try {
+      const pick = await aiFindIsbn(e.title, e.authors);
+      if (pick) result = { status: 'suggested', pick, reason: AI_REASON };
+    } catch (err) {
+      console.warn('KI-Websuche fehlgeschlagen:', err.message);
+    }
+  }
+  if (allFailed && result.status === 'none') throw new Error('Keine Buchquelle erreichbar.');
 
   if (result.status === 'auto') {
     const p = result.pick;
@@ -140,6 +152,20 @@ export async function lookupIsbn(editionId) {
       .run(result.status, result.pick ? JSON.stringify({ ...result.pick, reason: result.reason }) : null, e.id);
   }
   return result;
+}
+
+const AI_REASON = 'Von der KI im Web gefunden – bitte bei Amazon prüfen';
+
+// Direkt per KI suchen (Knopf im Admin), Ergebnis als Vorschlag speichern.
+export async function aiSuggestForEdition(editionId) {
+  const e = db.prepare('SELECT id, title, authors FROM editions WHERE id = ?').get(editionId);
+  if (!e) return null;
+  const pick = await aiFindIsbn(e.title, e.authors);
+  if (pick) {
+    db.prepare("UPDATE editions SET isbn_status = 'suggested', isbn_suggestion = ? WHERE id = ?")
+      .run(JSON.stringify({ ...pick, reason: AI_REASON }), e.id);
+  }
+  return pick;
 }
 
 // Beim Start: manuelle Einträge ohne bisherige Suche nachholen.

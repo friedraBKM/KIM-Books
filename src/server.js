@@ -9,7 +9,8 @@ import { searchShelf, searchExternal, rateLimited, backfillIsbns } from './searc
 import { amazonLinks, cleanIsbn, validIsbn, linkForIsbn } from './amazon.js';
 import { aiEnabled, aiStatus, reconcile, scheduleReconcile } from './ai.js';
 import { notifyManualEntry, notifyChannels } from './notify.js';
-import { lookupIsbn, lookupPending } from './isbn-lookup.js';
+import { lookupIsbn, lookupPending, aiSuggestForEdition } from './isbn-lookup.js';
+import { aiFindIsbn, aiSearchEnabled } from './ai-isbn.js';
 import { googleStatus } from './google-books.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -353,6 +354,7 @@ app.get('/api/admin/overview', (req, res) => {
   `).all();
   res.json({
     ai: aiStatus(),
+    aiSearch: aiSearchEnabled(),
     notify: notifyChannels(),
     warnings: config.secretIsRandom ? ['APP_SECRET ist nicht gesetzt. Nach einem Neustart müssen alle den Zugangscode neu eingeben und können ihre Auswahl nicht mehr ändern.'] : [],
     review: editions
@@ -438,6 +440,14 @@ app.post('/api/admin/editions/:id/isbn', async (req, res) => {
     db.prepare('UPDATE works SET cover = COALESCE(cover, ?) WHERE id = (SELECT work_id FROM editions WHERE id = ?)').run(s.cover || null, id);
   } else if (action === 'reject') {
     db.prepare("UPDATE editions SET isbn = NULL, isbn_status = 'rejected' WHERE id = ?").run(id);
+  } else if (action === 'ai') {
+    if (!aiSearchEnabled()) return res.status(400).json({ error: 'Kein ANTHROPIC_API_KEY gesetzt.' });
+    try {
+      const pick = await aiSuggestForEdition(id);
+      if (!pick) return res.json({ ok: true, found: false });
+    } catch (err) {
+      return res.status(502).json({ error: err.message });
+    }
   } else if (action === 'retry') {
     try {
       await lookupIsbn(id);
@@ -470,6 +480,20 @@ app.post('/api/admin/works/:id/isbn', (req, res) => {
   if (raw && !linkForIsbn(raw)) return res.status(400).json({ error: 'Das ist keine gültige ISBN (10 oder 13 Stellen, Prüfziffer prüfen).' });
   db.prepare('UPDATE works SET isbn_override = ? WHERE id = ?').run(raw || null, Number(req.params.id));
   res.json({ ok: true });
+});
+
+// KI-Websuche für ein Buch der Rangliste; Ergebnis wird nur angezeigt,
+// übernommen wird es über das ISBN-Feld (works/:id/isbn).
+app.post('/api/admin/works/:id/ai-isbn', async (req, res) => {
+  if (!aiSearchEnabled()) return res.status(400).json({ error: 'Kein ANTHROPIC_API_KEY gesetzt.' });
+  const w = db.prepare('SELECT title, authors FROM works WHERE id = ?').get(Number(req.params.id));
+  if (!w) return res.status(404).json({ error: 'Buch nicht gefunden.' });
+  try {
+    const pick = await aiFindIsbn(w.title, w.authors);
+    res.json({ found: Boolean(pick), pick, link: pick ? linkForIsbn(pick.isbn)?.url : null });
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
 });
 
 app.delete('/api/admin/works/:id', (req, res) => {
