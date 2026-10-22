@@ -200,26 +200,49 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .rangliste { background: var(--flaeche-karte); border: 1px solid var(--linie); }
 .platz { border-bottom: 1px solid var(--linie); }
 .platz:last-child { border-bottom: 0; }
-.platz .haupt { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; padding: 14px 20px; }
-.platz .rang { font-family: var(--font-zahl); font-size: 40px; line-height: 1; color: var(--text-headline); width: 44px; text-align: right; flex-shrink: 0; }
-.platz .info { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.platz .haupt {
+  display: grid;
+  grid-template-columns: 48px 48px minmax(0, 1fr) 220px 260px;
+  column-gap: 20px;
+  row-gap: 10px;
+  align-items: center;
+  padding: 16px 20px;
+}
+.platz .rang { font-family: var(--font-zahl); font-size: 40px; line-height: 1; color: var(--text-headline); text-align: right; }
+.platz .cover { width: 48px; height: 72px; }
+.platz .info { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .platz .titel { font-size: 17px; font-weight: 700; color: var(--text-headline); line-height: 1.3; }
-.balkenzeile { display: flex; align-items: center; gap: 12px; }
-.balken { flex: 1 1 auto; height: 12px; background: var(--flaeche); }
-.balken i { display: block; height: 12px; background: var(--balken); }
+.platz .autor { font-size: 14px; color: var(--text-neben); }
+.balkenzeile { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+.balken { flex: 1 1 auto; height: 10px; background: var(--flaeche); }
+.balken i { display: block; height: 10px; background: var(--balken); }
 .platz.erster .balken i { background: var(--rot); }
-.anzahl { font-weight: 700; color: var(--text-headline); font-size: 15px; white-space: nowrap; min-width: 110px; }
-.aktionen { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+.anzahl { font-weight: 700; color: var(--text-headline); font-size: 14px; white-space: nowrap; min-width: 92px; }
+.platz .kategorie { justify-self: start; }
+.platz .aktionen { display: grid; grid-template-columns: 1fr auto; column-gap: 12px; align-items: center; justify-items: end; }
+.platz .aktionen .textlink { white-space: nowrap; }
 .stimmen { padding: 0 20px 18px; display: flex; flex-direction: column; gap: 8px; }
-@media (min-width: 640px) { .stimmen { padding-left: 140px; } }
+@media (min-width: 900px) { .stimmen { padding-left: 156px; } }
+@media (max-width: 899px) {
+  .platz .haupt { grid-template-columns: 32px 40px minmax(0, 1fr); column-gap: 12px; padding: 14px 16px; }
+  .platz .rang { font-size: 32px; }
+  .platz .cover { width: 40px; height: 60px; }
+  .platz .kategorie, .platz .aktionen { grid-column: 3 / -1; }
+  .platz .aktionen { display: flex; flex-wrap: wrap; gap: 0 16px; }
+  .platz .aktionen > span:empty { display: none; }
+  .platz .aktionen .textlink { padding-left: 0; }
+}
 .stimmen p { margin: 0; padding: 10px 14px; background: var(--flaeche-leise); font-size: 15px; }
 
 /* Präsentationsmodus */
 body.praesentation .kopf, body.praesentation .nur-normal { display: none; }
 body.praesentation main.wrap { max-width: 1400px; padding-top: 24px; }
 body.praesentation .platz .titel { font-size: 24px; }
-body.praesentation .platz .rang { font-size: 56px; width: 64px; }
-body.praesentation .balken, body.praesentation .balken i { height: 18px; }
+body.praesentation .platz .rang { font-size: 56px; }
+body.praesentation .platz .haupt { grid-template-columns: 72px 56px minmax(0, 1fr) 260px; }
+body.praesentation .platz .cover { width: 56px; height: 84px; }
+body.praesentation .platz .autor { font-size: 18px; }
+body.praesentation .balken, body.praesentation .balken i { height: 16px; }
 body.praesentation .anzahl { font-size: 20px; }
 body.praesentation h1 { font-size: 48px; }
 

@@ -90,6 +90,8 @@ function render() {
   }
 
   // Im Filter neu durchnummerieren, Gleichstand behält den Rang.
+  // Rot nur für einen alleinigen Spitzenreiter (ein roter Akzent pro Ansicht)
+  const soloLeader = list.length > 0 && (list.length === 1 || list[0].count > list[1].count);
   let rank = 0;
   let last = null;
   $('rangliste').replaceChildren(...list.map((b, i) => {
@@ -104,7 +106,7 @@ function render() {
           type: 'button',
           'aria-expanded': String(isOpen),
           onclick: () => { isOpen ? open.delete(b.id) : open.add(b.id); render(); },
-          text: isOpen ? 'Stimmen ausblenden' : `Warum? (${b.whys.length})`,
+          text: isOpen ? 'Warum zuklappen' : `Warum? (${b.whys.length})`,
         })
       : null;
 
@@ -118,22 +120,20 @@ function render() {
       text: 'In meine Top 3',
     });
 
-    return el('div', { class: rank === 1 ? 'platz erster' : 'platz' },
+    return el('div', { class: i === 0 && soloLeader ? 'platz erster' : 'platz' },
       el('div', { class: 'haupt' },
         el('span', { class: 'rang', text: String(rank) }),
         coverImg(b.cover, true),
         el('div', { class: 'info' },
-          el('div', { class: 'zeile' },
-            titleLink(b, usePartner),
-            el('span', { class: 'neben', text: b.authors }),
-          ),
+          titleLink(b, usePartner),
+          el('div', { class: 'autor', text: b.authors }),
           el('div', { class: 'balkenzeile' },
             el('div', { class: 'balken', 'aria-hidden': 'true' }, bar),
             el('span', { class: 'anzahl', text: `${b.count} ${b.count === 1 ? 'Nennung' : 'Nennungen'}` }),
           ),
         ),
-        b.category ? el('span', { class: 'tag', text: b.category }) : null,
-        el('div', { class: 'aktionen' }, toggle, take),
+        el('div', { class: 'kategorie' }, b.category ? el('span', { class: 'tag', text: b.category }) : null),
+        el('div', { class: 'aktionen' }, toggle || el('span'), take),
       ),
       isOpen ? el('div', { class: 'stimmen' }, ...b.whys.map((w) => el('p', { text: `„${w}“` }))) : null,
     );
@@ -153,7 +153,6 @@ function titleLink(b, usePartner) {
       text: b.title,
     }),
     usePartner ? el('span', { class: 'neben', 'aria-label': 'Partnerlink', text: '*' }) : null,
-    b.amazon.exact ? null : el('span', { class: 'neben klein', text: ' (Amazon-Suche)' }),
   );
 }
 
