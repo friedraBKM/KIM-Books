@@ -4,18 +4,44 @@ const $ = (id) => document.getElementById(id);
 const REFRESH_MS = 20000;
 
 let data = null;
+let amazonTag = '';
+let partner = store.get('kim_partner') !== 'off';
 let category = 'Alle';
 const open = new Set();
 
 init();
 
 async function init() {
-  await ensureAccess($('gate'), $('inhalt'));
+  const cfg = await ensureAccess($('gate'), $('inhalt'));
+  amazonTag = cfg.amazonTag || '';
+  setupPartnerSwitch();
   $('praesentation').addEventListener('click', () => setPresentation(true));
   $('praesentation-ende').addEventListener('click', () => setPresentation(false));
   if (new URLSearchParams(location.search).get('praesentation') === '1') setPresentation(true);
   await load();
   setInterval(load, REFRESH_MS);
+}
+
+function setupPartnerSwitch() {
+  if (!amazonTag) {
+    partner = false;
+    return;
+  }
+  $('amazon-schalter').hidden = false;
+  for (const input of document.querySelectorAll('input[name="partner"]')) {
+    input.checked = (input.value === 'on') === partner;
+    input.addEventListener('change', () => {
+      partner = input.value === 'on';
+      store.set('kim_partner', partner ? 'on' : 'off');
+      if (data) render();
+    });
+  }
+}
+
+function amazonHref(link) {
+  if (!link?.url) return null;
+  if (!partner || !amazonTag) return link.url;
+  return `${link.url}${link.url.includes('?') ? '&' : '?'}tag=${encodeURIComponent(amazonTag)}`;
 }
 
 function setPresentation(on) {
@@ -36,6 +62,9 @@ async function load() {
 
 function render() {
   const { stats, categories, books } = data;
+  const usePartner = partner && Boolean(amazonTag);
+  $('partner-hinweis').hidden = !usePartner;
+  $('link-hinweis').hidden = usePartner;
 
   $('kennzahlen').replaceChildren(
     tile(stats.participants, 'Teilnehmende'),
@@ -95,7 +124,7 @@ function render() {
         coverImg(b.cover, true),
         el('div', { class: 'info' },
           el('div', { class: 'zeile' },
-            el('span', { class: 'titel', text: b.title }),
+            titleLink(b, usePartner),
             el('span', { class: 'neben', text: b.authors }),
           ),
           el('div', { class: 'balkenzeile' },
@@ -109,6 +138,23 @@ function render() {
       isOpen ? el('div', { class: 'stimmen' }, ...b.whys.map((w) => el('p', { text: `„${w}“` }))) : null,
     );
   }));
+}
+
+function titleLink(b, usePartner) {
+  const href = amazonHref(b.amazon);
+  if (!href) return el('span', { class: 'titel', text: b.title });
+  return el('span', {},
+    el('a', {
+      class: 'titel',
+      href,
+      target: '_blank',
+      rel: usePartner ? 'sponsored noopener noreferrer' : 'noopener noreferrer',
+      title: b.amazon.exact ? 'Bei Amazon ansehen' : 'Bei Amazon suchen',
+      text: b.title,
+    }),
+    usePartner ? el('span', { class: 'neben', 'aria-label': 'Partnerlink', text: '*' }) : null,
+    b.amazon.exact ? null : el('span', { class: 'neben klein', text: ' (Amazon-Suche)' }),
+  );
 }
 
 function tile(value, label) {

@@ -121,7 +121,7 @@ function renderMerges(editions) {
 }
 
 function renderWorks(works, categories) {
-  $('werke').replaceChildren(table(['Titel', 'Nennungen', 'Kategorie', ''], works.map((w) => {
+  $('werke').replaceChildren(table(['Titel', 'Nennungen', 'Kategorie', 'Amazon', ''], works.map((w) => {
     const select = el('select', { 'aria-label': `Kategorie für ${w.title}` },
       el('option', { value: '', text: w.category ? '' : '– noch keine –' }),
       ...categories.map((c) => el('option', { value: c, text: c })),
@@ -134,10 +134,19 @@ function renderWorks(works, categories) {
       if (!value) { select.value = w.category || ''; return; }
       act(() => api(`/api/admin/works/${w.id}/category`, { method: 'POST', body: { category: value } }));
     });
+    const isbn = el('input', { type: 'text', 'aria-label': `ISBN für ${w.title}`, placeholder: 'ISBN', maxlength: '17', inputmode: 'numeric' });
+    isbn.value = w.isbn_override || '';
     return el('tr', {},
       el('td', { class: 'titel' }, w.title, el('div', { class: 'neben', text: w.authors })),
       el('td', { text: String(w.count) }),
       el('td', {}, select, w.category_locked ? el('div', { class: 'neben klein', text: 'von dir festgelegt' }) : null),
+      el('td', {},
+        w.amazon ? el('a', { href: w.amazon.url, target: '_blank', rel: 'noopener noreferrer', text: w.amazon.exact ? 'prüfen' : 'nur Suche – prüfen' }) : null,
+        el('div', { class: 'knoepfe' }, isbn, el('button', {
+          class: 'sekundaer', type: 'button', text: 'Speichern',
+          onclick: () => act(() => api(`/api/admin/works/${w.id}/isbn`, { method: 'POST', body: { isbn: isbn.value } })),
+        })),
+      ),
       el('td', {}, el('button', {
         class: 'textlink', type: 'button', text: 'Löschen',
         onclick: () => act(() => api(`/api/admin/works/${w.id}`, { method: 'DELETE' }), `„${w.title}“ mit allen Stimmen löschen?`),

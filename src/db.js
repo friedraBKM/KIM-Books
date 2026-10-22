@@ -64,6 +64,14 @@ db.exec(`
   );
 `);
 
+// Spalten, die nach der ersten Version dazugekommen sind
+function addColumn(table, column, type) {
+  const exists = db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column);
+  if (!exists) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+}
+addColumn('editions', 'isbn', 'TEXT');
+addColumn('works', 'isbn_override', 'TEXT');
+
 export function getMeta(key, fallback = null) {
   const row = db.prepare('SELECT value FROM meta WHERE key = ?').get(key);
   return row ? JSON.parse(row.value) : fallback;

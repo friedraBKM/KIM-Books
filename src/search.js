@@ -2,6 +2,7 @@
 // in Google Books, ersatzweise in Open Library.
 import { db, normalize } from './db.js';
 import { config } from './config.js';
+import { cleanIsbn, validIsbn } from './amazon.js';
 
 const cache = new Map(); // q -> { at, results }
 const CACHE_TTL = 24 * 60 * 60 * 1000;
@@ -89,8 +90,33 @@ async function searchGoogle(query) {
       publisher: v.publisher || '',
       language: v.language || '',
       cover: img ? img.replace(/^http:/, 'https:').replace('&edge=curl', '') : null,
+      isbn: pickIsbn(v.industryIdentifiers),
     };
   }).filter((r) => r.title);
+}
+
+function pickIsbn(identifiers = []) {
+  const find = (type) => identifiers.find((i) => i.type === type)?.identifier;
+  const isbn = find('ISBN_13') || find('ISBN_10');
+  return isbn && validIsbn(isbn) ? cleanIsbn(isbn) : null;
+}
+
+// Einmalig beim Start: ISBN für Google-Ausgaben nachtragen, die vor der
+// Amazon-Verlinkung gespeichert wurden.
+export async function backfillIsbns() {
+  if (!config.googleBooksApiKey) return;
+  const rows = db.prepare("SELECT id, source_id FROM editions WHERE source = 'google' AND isbn IS NULL").all();
+  const update = db.prepare('UPDATE editions SET isbn = ? WHERE id = ?');
+  for (const row of rows) {
+    try {
+      const data = await fetchJson(`https://www.googleapis.com/books/v1/volumes/${encodeURIComponent(row.source_id)}?key=${config.googleBooksApiKey}`);
+      const isbn = pickIsbn(data.volumeInfo?.industryIdentifiers);
+      if (isbn) update.run(isbn, row.id);
+    } catch (err) {
+      console.warn(`ISBN für Ausgabe ${row.id} nicht ermittelt:`, err.message);
+    }
+  }
+  if (rows.length) console.log(`ISBN-Nachpflege: ${rows.length} Ausgaben geprüft.`);
 }
 
 async function searchOpenLibrary(query) {

@@ -253,3 +253,10 @@ body.praesentation h1 { font-size: 48px; }
 .text-seite h2 { font-size: 20px; margin-top: 8px; }
 .text-seite p, .text-seite ul { margin: 0; }
 .nav a.sekundaer { padding: 8px 16px; font-weight: 600; }
+
+a.titel { text-decoration: none; }
+a.titel:hover { text-decoration: underline; }
+.schalter { border: 1px solid var(--linie); background: var(--flaeche-karte); padding: 12px 16px; margin: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.schalter legend { font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-headline); padding: 0 4px; }
+.schalter label { font-weight: 400; color: var(--text); display: flex; gap: 8px; align-items: center; min-height: 32px; cursor: pointer; }
+.schalter input { accent-color: var(--aubergine); width: 18px; height: 18px; }

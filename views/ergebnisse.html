@@ -46,8 +46,18 @@
       <div class="chips" id="chips"></div>
     </div>
 
+    <p class="neben klein" id="partner-hinweis" hidden>Ein Klick auf den Titel öffnet das Buch bei Amazon. Mit * gekennzeichnete Links sind Partnerlinks: Als Amazon-Partner verdiene ich an qualifizierten Verkäufen. Für dich ändert sich der Preis nicht. Ohne Partnerlink: Umschalter ganz unten.</p>
+    <p class="neben klein" id="link-hinweis" hidden>Ein Klick auf den Titel öffnet das Buch bei Amazon.</p>
+
     <section class="rangliste" id="rangliste" aria-label="Rangliste"></section>
-    <p class="neben klein nur-normal">Gleich viele Nennungen ergeben denselben Rang. <a href="/datenschutz">Datenschutzhinweis</a></p>
+
+    <fieldset class="schalter nur-normal" id="amazon-schalter" hidden>
+      <legend>Amazon-Links</legend>
+      <label><input type="radio" name="partner" value="on"> mit Partnerlink – unterstützt den Betrieb des Regals, für dich kostet es nichts extra</label>
+      <label><input type="radio" name="partner" value="off"> ohne Partnerlink</label>
+    </fieldset>
+
+    <p class="neben klein nur-normal">Gleich viele Nennungen ergeben denselben Rang. Privates Projekt, keine Empfehlung eines Unternehmens. <a href="/datenschutz">Datenschutzhinweis</a></p>
   </main>
 </body>
 </html>

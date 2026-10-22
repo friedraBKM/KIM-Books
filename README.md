@@ -5,6 +5,7 @@ Eine kleine Web-App für eine Buchumfrage. Teilnehmende nennen anonym bis zu dre
 ## Was die App kann
 
 - **Eintragen** (`/`): Titel oder Autor suchen und das richtige Buch aus der Trefferliste wählen. Gesucht wird zuerst im eigenen Regal, also unter den Büchern, die schon genannt wurden; erst danach in Google Books bzw. Open Library. Bücher aus dem Regal lassen sich mit einem Klick übernehmen. Wird ein Buch nicht gefunden, kann man Titel und Autor selbst eintragen.
+- **Amazon-Links:** Ein Klick auf den Titel öffnet das Buch bei Amazon. Ist die ISBN bekannt (Treffer aus Google Books), führt der Link genau zu dieser Ausgabe (`amazon.de/dp/<ISBN-10>`), bei mehreren Ausgaben eines Werks zur deutschen mit den meisten Nennungen. Ohne ISBN (manuell eingetragen, Open Library) gibt es eine Amazon-Suche. Im Admin lässt sich pro Buch eine ISBN festlegen.
 - **Ergebnisse** (`/ergebnisse`): Kennzahlen, Rangliste mit Zähler und Balken, Filter nach Kategorie, „Warum“-Sätze zum Aufklappen und „In meine Top 3“. Die Seite aktualisiert sich alle 20 Sekunden. Der Präsentationsmodus zeigt alles groß an (auch direkt über `/ergebnisse?praesentation=1`).
 - **Admin** (`/admin`, Benutzer `admin`):
   - Status des KI-Abgleichs.
@@ -48,6 +49,7 @@ Eine kleine Web-App für eine Buchumfrage. Teilnehmende nennen anonym bis zu dre
 | `OPENLIBRARY_CONTACT` | nein | Deine E-Mail; Open Library erlaubt damit mehr Anfragen |
 | `ANTHROPIC_API_KEY` | empfohlen | Für den KI-Abgleich (siehe unten) |
 | `ANTHROPIC_MODEL` | nein | Standard `claude-opus-5-5`. Günstiger, aber weniger gründlich: `claude-haiku-5-5` |
+| `AMAZON_PARTNER_TAG` | nein | Amazon-Partner-ID, z. B. `meinname-21`. Dann sind die Amazon-Links standardmäßig Partnerlinks (gekennzeichnet), Besucher können unten auf der Ergebnisseite auf neutrale Links umstellen. Leer = immer neutrale Links |
 | `NOTIFY_EMAIL` | nein | Empfänger für Hinweise auf manuelle Einträge |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | nein | Postausgangsserver für diese E-Mails |
 | `NOTIFY_WEBHOOK_URL` | nein | Alternativ oder zusätzlich: Webhook, z. B. ntfy.sh oder ein Teams-/Slack-Webhook (erhält `{"text": "..."}`) |

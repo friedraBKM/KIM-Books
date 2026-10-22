@@ -41,6 +41,9 @@ export const config = {
   // Verantwortliche Stelle für den Datenschutzhinweis (freier Text, z. B. "Max Muster, max@example.de")
   privacyContact: env.PRIVACY_CONTACT || '',
 
+  // Amazon-Partner-ID (z. B. "meinname-21"). Leer = keine Partnerlinks, kein Umschalter.
+  amazonPartnerTag: (env.AMAZON_PARTNER_TAG || '').trim(),
+
   publicUrl: (env.PUBLIC_URL || '').replace(/\/$/, ''),
   maxWhyLength: 280,
 };

@@ -220,6 +220,7 @@ async function submit() {
           publisher: b.publisher,
           language: b.language,
           cover: b.cover,
+          isbn: b.isbn,
           why: b.why || '',
         })),
       },

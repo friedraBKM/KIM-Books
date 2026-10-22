@@ -5,7 +5,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
 import { db, transaction, cleanupOrphans, normalize, firstAuthorKey } from './db.js';
-import { searchShelf, searchExternal, rateLimited } from './search.js';
+import { searchShelf, searchExternal, rateLimited, backfillIsbns } from './search.js';
+import { amazonLinks, cleanIsbn, validIsbn, linkForIsbn } from './amazon.js';
 import { aiEnabled, aiStatus, reconcile, scheduleReconcile } from './ai.js';
 import { notifyManualEntry, notifyChannels } from './notify.js';
 
@@ -63,6 +64,7 @@ app.get('/api/config', (req, res) => {
     hasAccess: hasAccess(req),
     maxWhyLength: config.maxWhyLength,
     privacyContact: config.privacyContact,
+    amazonTag: /^[A-Za-z0-9-]{1,40}$/.test(config.amazonPartnerTag) ? config.amazonPartnerTag : '',
   });
 });
 
@@ -190,8 +192,8 @@ app.post('/api/submission', requireAccess, (req, res) => {
       const seenWorks = new Set();
       const insertWork = db.prepare('INSERT INTO works (title, authors, cover) VALUES (?, ?, ?)');
       const insertEdition = db.prepare(`
-        INSERT INTO editions (source, source_id, title, subtitle, authors, year, publisher, language, cover, work_id, needs_review, merge_reason)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO editions (source, source_id, title, subtitle, authors, year, publisher, language, cover, work_id, needs_review, merge_reason, isbn)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       const findEdition = db.prepare('SELECT id, work_id FROM editions WHERE source = ? AND source_id = ?');
       const insertVote = db.prepare('INSERT INTO votes (voter, edition_id, why) VALUES (?, ?, ?)');
@@ -223,6 +225,9 @@ app.post('/api/submission', requireAccess, (req, res) => {
           if (existing) {
             editionId = existing.id;
             workId = existing.work_id;
+            if (!manual && validIsbn(b.isbn)) {
+              db.prepare('UPDATE editions SET isbn = COALESCE(isbn, ?) WHERE id = ?').run(cleanIsbn(b.isbn), existing.id);
+            }
           } else {
             const cover = manual ? null : allowedCover(b.cover);
             const match = findWorkByKey(title, authors);
@@ -232,6 +237,7 @@ app.post('/api/submission', requireAccess, (req, res) => {
               manual ? null : str(b.year, 4), manual ? null : str(b.publisher, 120),
               manual ? null : str(b.language, 8), cover, workId, manual ? 1 : 0,
               match ? 'Gleicher Titel und Autor (automatisch)' : null,
+              !manual && validIsbn(b.isbn) ? cleanIsbn(b.isbn) : null,
             ).lastInsertRowid);
             if (manual) manualEntries.push({ title, authors });
           }
@@ -275,6 +281,7 @@ function rankedWorks() {
     if (!byWork.has(w.work_id)) byWork.set(w.work_id, []);
     byWork.get(w.work_id).push(w.why);
   }
+  const links = amazonLinks();
   let rank = 0;
   let lastCount = null;
   return works.map((w, i) => {
@@ -282,7 +289,7 @@ function rankedWorks() {
       rank = i + 1;
       lastCount = w.count;
     }
-    return { ...w, rank, whys: byWork.get(w.id) || [] };
+    return { ...w, rank, whys: byWork.get(w.id) || [], amazon: links.get(w.id) };
   });
 }
 
@@ -316,8 +323,9 @@ app.use('/api/admin', requireAdmin);
 
 app.get('/api/admin/overview', (req, res) => {
   const counts = new Map(rankedWorks().map((w) => [w.id, w.count]));
-  const works = db.prepare('SELECT id, title, authors, category, category_locked FROM works ORDER BY title COLLATE NOCASE').all()
-    .map((w) => ({ ...w, count: counts.get(w.id) || 0 }))
+  const links = amazonLinks();
+  const works = db.prepare('SELECT id, title, authors, category, category_locked, isbn_override FROM works ORDER BY title COLLATE NOCASE').all()
+    .map((w) => ({ ...w, count: counts.get(w.id) || 0, amazon: links.get(w.id) }))
     .sort((a, b) => b.count - a.count || a.title.localeCompare(b.title, 'de'));
   const editions = db.prepare(`
     SELECT e.id, e.title, e.subtitle, e.authors, e.year, e.language, e.source, e.merge_reason, e.needs_review, e.separated,
@@ -400,6 +408,13 @@ app.post('/api/admin/works/:id/category', (req, res) => {
   res.json({ ok: true });
 });
 
+app.post('/api/admin/works/:id/isbn', (req, res) => {
+  const raw = cleanIsbn(req.body?.isbn);
+  if (raw && !linkForIsbn(raw)) return res.status(400).json({ error: 'Das ist keine gültige ISBN (10 oder 13 Stellen, Prüfziffer prüfen).' });
+  db.prepare('UPDATE works SET isbn_override = ? WHERE id = ?').run(raw || null, Number(req.params.id));
+  res.json({ ok: true });
+});
+
 app.delete('/api/admin/works/:id', (req, res) => {
   transaction(() => {
     db.prepare('DELETE FROM votes WHERE edition_id IN (SELECT id FROM editions WHERE work_id = ?)').run(Number(req.params.id));
@@ -416,9 +431,9 @@ app.post('/api/admin/votes/:id/why', (req, res) => {
 
 app.get('/api/admin/export.csv', (req, res) => {
   const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const lines = [['Rang', 'Titel', 'Autoren', 'Kategorie', 'Nennungen', 'Warum-Sätze'].map(esc).join(';')];
+  const lines = [['Rang', 'Titel', 'Autoren', 'Kategorie', 'Nennungen', 'Amazon', 'Warum-Sätze'].map(esc).join(';')];
   for (const w of rankedWorks()) {
-    lines.push([w.rank, w.title, w.authors, w.category, w.count, w.whys.join(' | ')].map(esc).join(';'));
+    lines.push([w.rank, w.title, w.authors, w.category, w.count, w.amazon?.url, w.whys.join(' | ')].map(esc).join(';'));
   }
   res.set('Content-Disposition', 'attachment; filename="must-read-regal.csv"');
   res.type('text/csv; charset=utf-8').send(`﻿${lines.join('\r\n')}\r\n`);
@@ -443,4 +458,5 @@ app.listen(config.port, () => {
   if (config.secretIsRandom) console.warn('Hinweis: APP_SECRET ist nicht gesetzt.');
   if (!config.adminPassword) console.warn('Hinweis: ADMIN_PASSWORD ist nicht gesetzt, Admin-Bereich gesperrt.');
   if (!aiEnabled()) console.warn('Hinweis: ANTHROPIC_API_KEY fehlt, KI-Abgleich ist aus.');
+  backfillIsbns().catch((err) => console.warn('ISBN-Nachpflege fehlgeschlagen:', err.message));
 });
