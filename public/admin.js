@@ -3,7 +3,29 @@ import { el, api } from './common.js';
 const $ = (id) => document.getElementById(id);
 
 load();
+loadGoogle(false);
 $('ki-start').addEventListener('click', runAi);
+$('google-test').addEventListener('click', () => loadGoogle(true));
+
+async function loadGoogle(force) {
+  $('google-test').disabled = true;
+  $('google-titel').textContent = 'Wird geprüft …';
+  $('google-text').textContent = '';
+  try {
+    const g = await api(`/api/admin/google-status${force ? '?force=1' : ''}`);
+    $('google-titel').textContent = !g.configured ? 'Nicht eingerichtet' : g.ok ? 'Funktioniert' : 'Fehler';
+    const lines = [g.text];
+    if (g.checkedAt) lines.push(`Geprüft: ${fmt(g.checkedAt)}`);
+    if (g.lastOkAt) lines.push(`Letzte erfolgreiche Abfrage: ${fmt(g.lastOkAt)}`);
+    if (g.ok && g.lastError) lines.push(`Letzter Fehler (${fmt(g.lastError.at)}): ${g.lastError.text}`);
+    $('google-text').replaceChildren(...lines.flatMap((l, i) => (i ? [el('br'), l] : [l])));
+    $('google').classList.toggle('tuerkis', Boolean(g.ok));
+  } catch (err) {
+    $('google-titel').textContent = 'Fehler';
+    $('google-text').textContent = err.message;
+  }
+  $('google-test').disabled = false;
+}
 
 async function load() {
   let d;

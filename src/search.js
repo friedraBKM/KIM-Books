@@ -3,6 +3,7 @@
 import { db, normalize } from './db.js';
 import { config } from './config.js';
 import { cleanIsbn, validIsbn } from './amazon.js';
+import { googleFetch } from './google-books.js';
 
 const cache = new Map(); // q -> { at, results }
 const CACHE_TTL = 24 * 60 * 60 * 1000;
@@ -42,7 +43,7 @@ export function searchShelf(query, limit = 8) {
 export async function searchExternal(query) {
   const key = normalize(query);
   const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < CACHE_TTL) return hit.results;
+  if (hit && Date.now() - hit.at < hit.ttl) return hit.results;
 
   let results = [];
   let source = 'google';
@@ -62,7 +63,8 @@ export async function searchExternal(query) {
 
   results = dedupe(results).slice(0, 8);
   if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value);
-  cache.set(key, { at: Date.now(), results, source });
+  // Ersatz-Treffer (Google gestört) nur kurz merken, damit bald wieder Google gefragt wird
+  cache.set(key, { at: Date.now(), results, source, ttl: source === 'google' ? CACHE_TTL : 10 * 60 * 1000 });
   return results;
 }
 
@@ -73,9 +75,7 @@ async function fetchJson(url, headers = {}) {
 }
 
 async function searchGoogle(query) {
-  const params = new URLSearchParams({ q: query, maxResults: '20', printType: 'books' });
-  if (config.googleBooksApiKey) params.set('key', config.googleBooksApiKey);
-  const data = await fetchJson(`https://www.googleapis.com/books/v1/volumes?${params}`);
+  const data = await googleFetch('/volumes', { q: query, maxResults: '20', printType: 'books' });
   return (data.items || []).map((item) => {
     const v = item.volumeInfo || {};
     const img = v.imageLinks?.thumbnail || v.imageLinks?.smallThumbnail || null;
@@ -109,7 +109,7 @@ export async function backfillIsbns() {
   const update = db.prepare('UPDATE editions SET isbn = ? WHERE id = ?');
   for (const row of rows) {
     try {
-      const data = await fetchJson(`https://www.googleapis.com/books/v1/volumes/${encodeURIComponent(row.source_id)}?key=${config.googleBooksApiKey}`);
+      const data = await googleFetch(`/volumes/${encodeURIComponent(row.source_id)}`);
       const isbn = pickIsbn(data.volumeInfo?.industryIdentifiers);
       if (isbn) update.run(isbn, row.id);
     } catch (err) {

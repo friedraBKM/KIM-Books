@@ -10,6 +10,7 @@ import { amazonLinks, cleanIsbn, validIsbn, linkForIsbn } from './amazon.js';
 import { aiEnabled, aiStatus, reconcile, scheduleReconcile } from './ai.js';
 import { notifyManualEntry, notifyChannels } from './notify.js';
 import { lookupIsbn, lookupPending } from './isbn-lookup.js';
+import { googleStatus } from './google-books.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, '..');
@@ -370,6 +371,10 @@ app.get('/api/admin/overview', (req, res) => {
     categories: [...new Set(works.map((w) => w.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'de')),
     flagged,
   });
+});
+
+app.get('/api/admin/google-status', async (req, res) => {
+  res.json(await googleStatus(req.query.force === '1'));
 });
 
 app.post('/api/admin/reconcile', async (req, res) => {

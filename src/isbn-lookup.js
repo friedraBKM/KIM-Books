@@ -6,6 +6,7 @@
 import { db, normalize, firstAuthorKey } from './db.js';
 import { config } from './config.js';
 import { cleanIsbn, validIsbn } from './amazon.js';
+import { googleFetch } from './google-books.js';
 
 const TIMEOUT = 8000;
 
@@ -51,9 +52,7 @@ async function fromDnb(title, authorKey) {
 
 async function fromGoogle(title, authorKey) {
   const q = `intitle:"${title.replace(/"/g, '')}"${authorKey ? ` inauthor:${authorKey}` : ''}`;
-  const params = new URLSearchParams({ q, maxResults: '20', printType: 'books' });
-  if (config.googleBooksApiKey) params.set('key', config.googleBooksApiKey);
-  const data = await (await get(`https://www.googleapis.com/books/v1/volumes?${params}`)).json();
+  const data = await googleFetch('/volumes', { q, maxResults: '20', printType: 'books' });
   return (data.items || []).flatMap((item) => {
     const v = item.volumeInfo || {};
     const ids = v.industryIdentifiers || [];
