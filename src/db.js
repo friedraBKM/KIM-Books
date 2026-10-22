@@ -7,7 +7,27 @@ import { config } from './config.js';
 
 fs.mkdirSync(config.dataDir, { recursive: true });
 
-export const db = new DatabaseSync(path.join(config.dataDir, 'kim-books.sqlite'));
+const dbFile = path.join(config.dataDir, 'kim-books.sqlite');
+const isNew = !fs.existsSync(dbFile);
+export const db = new DatabaseSync(dbFile);
+
+// Sicherung bei jedem Start, bevor Tabellen angepasst werden.
+// Die letzten 20 Stände bleiben unter DATA_DIR/backups liegen.
+const backupDir = path.join(config.dataDir, 'backups');
+export function backupTo(file) {
+  db.prepare('VACUUM INTO ?').run(file);
+}
+if (!isNew) {
+  try {
+    fs.mkdirSync(backupDir, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    backupTo(path.join(backupDir, `kim-books-${stamp}.sqlite`));
+    const old = fs.readdirSync(backupDir).filter((f) => f.endsWith('.sqlite')).sort().reverse().slice(20);
+    for (const f of old) fs.unlinkSync(path.join(backupDir, f));
+  } catch (err) {
+    console.error('Sicherung beim Start fehlgeschlagen:', err.message);
+  }
+}
 
 db.exec(`
   PRAGMA journal_mode = WAL;

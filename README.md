@@ -36,7 +36,13 @@ Eine kleine Web-App für eine Buchumfrage. Teilnehmende nennen anonym bis zu dre
 5. **Deploy** klicken. Danach `https://deine-domain/healthz` aufrufen. Es sollte `{"ok":true}` erscheinen.
 6. **Test:** Seite öffnen, Zugangscode eingeben, ein Buch eintragen, unter `/admin` mit `admin` und deinem Passwort anmelden.
 
-**Backup:** Die Datei `kim-books.sqlite` im Volume regelmäßig sichern, zum Beispiel über die Volume-Backups deines Servers. Zusätzlich liefert der CSV-Export im Admin jederzeit eine lesbare Kopie der Ergebnisse.
+**Daten bei Updates:**
+- Alle Daten liegen im Volume `/data`. Ein Redeploy ersetzt nur den Programmcode, nicht dieses Volume.
+- Änderungen an der Datenbank werden nur ergänzend gemacht (neue Spalten), es wird nie etwas gelöscht oder umgebaut.
+- Bei jedem Start legt die App vorher eine Sicherung unter `/data/backups` an; die letzten 20 bleiben erhalten.
+- Im Start-Log steht „Datenbestand: X Teilnehmende, Y Nennungen“. So siehst du nach jedem Deploy sofort, ob alles da ist.
+- Im Admin lädt „Datenbank sichern“ eine vollständige Kopie herunter. Das solltest du vor jedem größeren Update tun.
+
 
 ## Umgebungsvariablen
 

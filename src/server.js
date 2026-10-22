@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
-import { db, transaction, cleanupOrphans, normalize, firstAuthorKey } from './db.js';
+import { db, transaction, cleanupOrphans, normalize, firstAuthorKey, backupTo } from './db.js';
 import { searchShelf, searchExternal, rateLimited, backfillIsbns } from './search.js';
 import { amazonLinks, cleanIsbn, validIsbn, linkForIsbn } from './amazon.js';
 import { aiEnabled, aiStatus, reconcile, scheduleReconcile } from './ai.js';
@@ -429,6 +429,19 @@ app.post('/api/admin/votes/:id/why', (req, res) => {
   res.json({ ok: true });
 });
 
+// Vollständige Kopie der Datenbank zum Herunterladen (Sicherung außerhalb des Servers)
+app.get('/api/admin/backup.sqlite', (req, res) => {
+  const file = path.join(config.dataDir, `download-${Date.now()}.sqlite`);
+  try {
+    backupTo(file);
+    const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+    res.download(file, `must-read-regal-${stamp}.sqlite`, () => fs.rm(file, { force: true }, () => {}));
+  } catch (err) {
+    fs.rm(file, { force: true }, () => {});
+    res.status(500).send(`Sicherung fehlgeschlagen: ${err.message}`);
+  }
+});
+
 app.get('/api/admin/export.csv', (req, res) => {
   const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const lines = [['Rang', 'Titel', 'Autoren', 'Kategorie', 'Nennungen', 'Amazon', 'Warum-Sätze'].map(esc).join(';')];
@@ -455,6 +468,8 @@ app.use(express.static(path.join(root, 'public'), { index: false, maxAge: '1h' }
 
 app.listen(config.port, () => {
   console.log(`Must-Read-Regal läuft auf Port ${config.port}`);
+  const n = db.prepare('SELECT COUNT(DISTINCT voter) AS p, COUNT(*) AS v FROM votes').get();
+  console.log(`Datenbestand: ${n.p} Teilnehmende, ${n.v} Nennungen (Datei: ${path.resolve(config.dataDir)})`);
   if (config.secretIsRandom) console.warn('Hinweis: APP_SECRET ist nicht gesetzt.');
   if (!config.adminPassword) console.warn('Hinweis: ADMIN_PASSWORD ist nicht gesetzt, Admin-Bereich gesperrt.');
   if (!aiEnabled()) console.warn('Hinweis: ANTHROPIC_API_KEY fehlt, KI-Abgleich ist aus.');
