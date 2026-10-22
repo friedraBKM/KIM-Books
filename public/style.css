@@ -260,3 +260,5 @@ a.titel:hover { text-decoration: underline; }
 .schalter legend { font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-headline); padding: 0 4px; }
 .schalter label { font-weight: 400; color: var(--text); display: flex; gap: 8px; align-items: center; min-height: 32px; cursor: pointer; }
 .schalter input { accent-color: var(--aubergine); width: 18px; height: 18px; }
+#pruefen table { min-width: 1080px; }
+#pruefen input[type="text"] { min-width: 180px; }

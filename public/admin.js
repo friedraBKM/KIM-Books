@@ -83,8 +83,38 @@ function table(headers, rows, emptyText) {
   );
 }
 
+function isbnCell(e) {
+  const s = e.isbn_suggestion;
+  const isbnAct = (action) => () => act(() => api(`/api/admin/editions/${e.id}/isbn`, { method: 'POST', body: { action } }));
+  const check = (url) => (url ? el('a', { href: url, target: '_blank', rel: 'noopener noreferrer', text: 'bei Amazon prüfen' }) : null);
+  const describe = (x) => `${x.title}${x.authors ? ` – ${x.authors}` : ''}${x.publisher ? `, ${x.publisher}` : ''}${x.year ? ` ${x.year}` : ''} (ISBN ${x.isbn}, ${x.source})`;
+
+  if (e.source !== 'manual') return el('td', { class: 'neben', text: '–' });
+  if (e.isbn_status === 'auto' || e.isbn_status === 'confirmed') {
+    return el('td', {},
+      el('div', { text: `${e.isbn_status === 'auto' ? 'Automatisch verknüpft' : 'Bestätigt'}: ${s ? describe(s) : e.isbn}` }),
+      el('div', { class: 'knoepfe' }, check(e.isbnLink), el('button', { class: 'textlink', type: 'button', text: 'Verwerfen', onclick: isbnAct('reject') })),
+    );
+  }
+  if (e.isbn_status === 'suggested' && s) {
+    return el('td', {},
+      el('div', { text: `Vorschlag: ${describe(s)}` }),
+      s.reason ? el('div', { class: 'neben klein', text: s.reason }) : null,
+      el('div', { class: 'knoepfe' },
+        check(e.suggestionLink),
+        el('button', { class: 'voll', type: 'button', text: 'Übernehmen', onclick: isbnAct('accept') }),
+        el('button', { class: 'textlink', type: 'button', text: 'Verwerfen', onclick: isbnAct('reject') }),
+      ),
+    );
+  }
+  return el('td', {},
+    el('div', { class: 'neben', text: e.isbn_status === 'rejected' ? 'Vorschlag verworfen – Link führt zur Amazon-Suche' : e.isbn_status ? 'Keine ISBN gefunden – Link führt zur Amazon-Suche' : 'Noch nicht gesucht (Quelle nicht erreichbar)' }),
+    el('button', { class: 'textlink', type: 'button', text: 'Erneut suchen', onclick: isbnAct('retry') }),
+  );
+}
+
 function renderReview(items) {
-  $('pruefen').replaceChildren(table(['Titel', 'Autor', 'Zugeordnet zu', 'Stimmen', ''], items.map((e) => {
+  $('pruefen').replaceChildren(table(['Titel', 'Autor', 'Zugeordnet zu', 'Stimmen', 'Amazon-Link', ''], items.map((e) => {
     const title = el('input', { type: 'text', 'aria-label': 'Titel', maxlength: '200' });
     title.value = e.title;
     const authors = el('input', { type: 'text', 'aria-label': 'Autor', maxlength: '200' });
@@ -94,7 +124,8 @@ function renderReview(items) {
       el('td', {}, authors),
       el('td', { text: e.siblings > 1 ? `${e.work_title} (mit ${e.siblings - 1} weiteren Ausgaben)` : 'noch eigenständig' }),
       el('td', { text: String(e.votes) }),
-      el('td', {}, el('div', { class: 'knoepfe' },
+      isbnCell(e),
+      el('td', {}, e.needs_review ? el('div', { class: 'knoepfe' },
         el('button', {
           class: 'voll', type: 'button', text: 'Bestätigen',
           onclick: () => act(() => api(`/api/admin/editions/${e.id}/review`, { method: 'POST', body: { title: title.value, authors: authors.value } })),
@@ -103,7 +134,7 @@ function renderReview(items) {
           class: 'textlink', type: 'button', text: 'Löschen',
           onclick: () => act(() => api(`/api/admin/editions/${e.id}`, { method: 'DELETE' }), `„${e.title}“ samt Stimmen löschen?`),
         }),
-      )),
+      ) : el('span', { class: 'neben klein', text: 'Eintrag bestätigt' })),
     );
   }), 'Nichts zu prüfen.'));
 }

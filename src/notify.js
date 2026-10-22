@@ -32,7 +32,13 @@ async function flush() {
   timer = null;
   if (!books.length) return;
 
-  const list = books.map((b) => `- ${b.title}${b.authors ? ` (${b.authors})` : ''}`).join('\n');
+  const outcome = (b) => {
+    const p = b.lookup?.pick;
+    if (b.lookup?.status === 'auto') return `   Amazon-Link automatisch gesetzt: ${p.title} (${p.source}, ISBN ${p.isbn})`;
+    if (b.lookup?.status === 'suggested') return `   Vorschlag zum Bestätigen: ${p.title} (${p.source}, ISBN ${p.isbn})`;
+    return '   Keine ISBN gefunden – Link führt zur Amazon-Suche';
+  };
+  const list = books.map((b) => `- ${b.title}${b.authors ? ` (${b.authors})` : ''}\n${outcome(b)}`).join('\n');
   const link = config.publicUrl ? `${config.publicUrl}/admin` : '/admin';
   const subject = `Must-Read-Regal: ${books.length} Buch/Bücher manuell eingetragen – bitte prüfen`;
   const text = `Folgende Bücher wurden ohne Treffer in der Buchsuche manuell eingetragen:\n\n${list}\n\nBitte im Admin-Bereich prüfen: ${link}\n`;

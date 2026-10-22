@@ -9,6 +9,7 @@ import { searchShelf, searchExternal, rateLimited, backfillIsbns } from './searc
 import { amazonLinks, cleanIsbn, validIsbn, linkForIsbn } from './amazon.js';
 import { aiEnabled, aiStatus, reconcile, scheduleReconcile } from './ai.js';
 import { notifyManualEntry, notifyChannels } from './notify.js';
+import { lookupIsbn, lookupPending } from './isbn-lookup.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, '..');
@@ -239,7 +240,7 @@ app.post('/api/submission', requireAccess, (req, res) => {
               match ? 'Gleicher Titel und Autor (automatisch)' : null,
               !manual && validIsbn(b.isbn) ? cleanIsbn(b.isbn) : null,
             ).lastInsertRowid);
-            if (manual) manualEntries.push({ title, authors });
+            if (manual) manualEntries.push({ id: editionId, title, authors });
           }
         }
 
@@ -256,7 +257,15 @@ app.post('/api/submission', requireAccess, (req, res) => {
     return res.status(500).json({ error: 'Speichern fehlgeschlagen.' });
   }
 
-  manualEntries.forEach(notifyManualEntry);
+  // ISBN suchen, danach den Admin informieren (mit Ergebnis der Suche)
+  for (const entry of manualEntries) {
+    lookupIsbn(entry.id)
+      .then((result) => notifyManualEntry({ ...entry, lookup: result }))
+      .catch((err) => {
+        console.warn('ISBN-Suche fehlgeschlagen:', err.message);
+        notifyManualEntry(entry);
+      });
+  }
   scheduleReconcile();
   res.json({ ok: true });
 });
@@ -329,6 +338,7 @@ app.get('/api/admin/overview', (req, res) => {
     .sort((a, b) => b.count - a.count || a.title.localeCompare(b.title, 'de'));
   const editions = db.prepare(`
     SELECT e.id, e.title, e.subtitle, e.authors, e.year, e.language, e.source, e.merge_reason, e.needs_review, e.separated,
+           e.isbn, e.isbn_status, e.isbn_suggestion,
            e.work_id, w.title AS work_title, w.authors AS work_authors,
            (SELECT COUNT(*) FROM votes v WHERE v.edition_id = e.id) AS votes,
            (SELECT COUNT(*) FROM editions x WHERE x.work_id = e.work_id) AS siblings
@@ -344,7 +354,17 @@ app.get('/api/admin/overview', (req, res) => {
     ai: aiStatus(),
     notify: notifyChannels(),
     warnings: config.secretIsRandom ? ['APP_SECRET ist nicht gesetzt. Nach einem Neustart müssen alle den Zugangscode neu eingeben und können ihre Auswahl nicht mehr ändern.'] : [],
-    review: editions.filter((e) => e.needs_review),
+    review: editions
+      .filter((e) => e.needs_review || e.isbn_status === 'suggested' || e.isbn_status === 'auto')
+      .map((e) => {
+        const suggestion = e.isbn_suggestion ? JSON.parse(e.isbn_suggestion) : null;
+        return {
+          ...e,
+          isbn_suggestion: suggestion,
+          suggestionLink: suggestion?.isbn ? linkForIsbn(suggestion.isbn)?.url : null,
+          isbnLink: e.isbn ? linkForIsbn(e.isbn)?.url : null,
+        };
+      }),
     merges: editions.filter((e) => e.siblings > 1),
     works,
     categories: [...new Set(works.map((w) => w.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'de')),
@@ -382,6 +402,13 @@ app.post('/api/admin/editions/:id/review', (req, res) => {
   transaction(() => {
     const e = db.prepare('SELECT * FROM editions WHERE id = ?').get(id);
     if (!e) return;
+    if (title && (title !== e.title || (authors && authors !== e.authors))) {
+      // Geänderter Titel: ISBN neu suchen, außer sie wurde bereits bestätigt
+      if (e.source === 'manual' && e.isbn_status !== 'confirmed') {
+        db.prepare('UPDATE editions SET isbn = NULL, isbn_status = NULL, isbn_suggestion = NULL WHERE id = ?').run(id);
+        setImmediate(() => lookupIsbn(id).catch((err) => console.warn('ISBN-Suche fehlgeschlagen:', err.message)));
+      }
+    }
     if (title) {
       db.prepare('UPDATE editions SET title = ?, authors = ? WHERE id = ?').run(title, authors || e.authors, id);
       const siblings = db.prepare('SELECT COUNT(*) AS n FROM editions WHERE work_id = ?').get(e.work_id).n;
@@ -390,6 +417,31 @@ app.post('/api/admin/editions/:id/review', (req, res) => {
     db.prepare('UPDATE editions SET needs_review = 0 WHERE id = ?').run(id);
   });
   scheduleReconcile();
+  res.json({ ok: true });
+});
+
+// Vorschlag der ISBN-Suche übernehmen oder verwerfen, oder neu suchen
+app.post('/api/admin/editions/:id/isbn', async (req, res) => {
+  const id = Number(req.params.id);
+  const action = req.body?.action;
+  if (action === 'accept') {
+    const row = db.prepare('SELECT isbn_suggestion FROM editions WHERE id = ?').get(id);
+    const s = row?.isbn_suggestion ? JSON.parse(row.isbn_suggestion) : null;
+    if (!s?.isbn) return res.status(400).json({ error: 'Kein Vorschlag vorhanden.' });
+    db.prepare("UPDATE editions SET isbn = ?, isbn_status = 'confirmed', language = COALESCE(language, ?), cover = COALESCE(cover, ?) WHERE id = ?")
+      .run(s.isbn, s.language || null, s.cover || null, id);
+    db.prepare('UPDATE works SET cover = COALESCE(cover, ?) WHERE id = (SELECT work_id FROM editions WHERE id = ?)').run(s.cover || null, id);
+  } else if (action === 'reject') {
+    db.prepare("UPDATE editions SET isbn = NULL, isbn_status = 'rejected' WHERE id = ?").run(id);
+  } else if (action === 'retry') {
+    try {
+      await lookupIsbn(id);
+    } catch (err) {
+      return res.status(502).json({ error: err.message });
+    }
+  } else {
+    return res.status(400).json({ error: 'Unbekannte Aktion.' });
+  }
   res.json({ ok: true });
 });
 
@@ -474,4 +526,5 @@ app.listen(config.port, () => {
   if (!config.adminPassword) console.warn('Hinweis: ADMIN_PASSWORD ist nicht gesetzt, Admin-Bereich gesperrt.');
   if (!aiEnabled()) console.warn('Hinweis: ANTHROPIC_API_KEY fehlt, KI-Abgleich ist aus.');
   backfillIsbns().catch((err) => console.warn('ISBN-Nachpflege fehlgeschlagen:', err.message));
+  lookupPending().catch((err) => console.warn('ISBN-Suche beim Start fehlgeschlagen:', err.message));
 });

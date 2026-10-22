@@ -91,6 +91,8 @@ function addColumn(table, column, type) {
 }
 addColumn('editions', 'isbn', 'TEXT');
 addColumn('works', 'isbn_override', 'TEXT');
+addColumn('editions', 'isbn_status', 'TEXT');  // auto | suggested | none | confirmed | rejected
+addColumn('editions', 'isbn_suggestion', 'TEXT');  // JSON des gefundenen Treffers
 
 export function getMeta(key, fallback = null) {
   const row = db.prepare('SELECT value FROM meta WHERE key = ?').get(key);
