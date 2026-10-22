@@ -114,7 +114,7 @@ export function decide(wantedTitle, wantedAuthors, candidates) {
 }
 
 export async function lookupIsbn(editionId) {
-  const e = db.prepare("SELECT id, title, authors FROM editions WHERE id = ? AND source = 'manual'").get(editionId);
+  const e = db.prepare('SELECT id, title, authors FROM editions WHERE id = ?').get(editionId);
   if (!e) return null;
   const authorKey = firstAuthorKey(e.authors);
   const title = String(e.title).split(TITLE_SPLIT)[0].trim();

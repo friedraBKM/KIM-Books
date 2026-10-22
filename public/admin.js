@@ -7,6 +7,34 @@ load();
 loadGoogle(false);
 $('ki-start').addEventListener('click', runAi);
 $('google-test').addEventListener('click', () => loadGoogle(true));
+$('nacharbeit-start').addEventListener('click', async () => {
+  try {
+    renderRepair(await api('/api/admin/repair', { method: 'POST' }));
+  } catch (err) {
+    message('fehler', err.message);
+  }
+});
+
+let repairTimer = null;
+function renderRepair(r) {
+  if (!r) return;
+  const button = $('nacharbeit-start');
+  button.disabled = r.running;
+  const last = r.last;
+  const lines = [];
+  if (r.running) lines.push(r.progress || 'Läuft …');
+  else if (last?.error) lines.push(`Letzter Lauf ${fmt(last.at)} abgebrochen: ${last.error}`);
+  else if (last) lines.push(`Letzter Lauf ${fmt(last.at)}: ${last.isbnChecked} Bücher ohne ISBN geprüft, ${last.isbnAuto} automatisch verknüpft, ${last.isbnSuggested} Vorschläge zum Prüfen; ${last.coversFound} von ${last.coversChecked} fehlenden Covern gefunden.`);
+  if (lines.length) $('nacharbeit-text').textContent = lines.join(' ');
+  clearTimeout(repairTimer);
+  if (r.running) {
+    repairTimer = setTimeout(async () => {
+      const next = await api('/api/admin/repair').catch(() => null);
+      if (next && !next.running) load();
+      else renderRepair(next);
+    }, 3000);
+  }
+}
 
 async function loadGoogle(force) {
   $('google-test').disabled = true;
@@ -37,6 +65,7 @@ async function load() {
     return;
   }
   aiSearch = Boolean(d.aiSearch);
+  renderRepair(d.repair);
   renderAi(d.ai, d.notify);
   $('warnungen').replaceChildren(...d.warnings.map((w) => el('div', { class: 'fehler', text: w })));
   renderReview(d.review);
@@ -113,7 +142,6 @@ function isbnCell(e) {
   const check = (url) => (url ? el('a', { href: url, target: '_blank', rel: 'noopener noreferrer', text: 'bei Amazon prüfen' }) : null);
   const describe = (x) => `${x.title}${x.authors ? ` – ${x.authors}` : ''}${x.publisher ? `, ${x.publisher}` : ''}${x.year ? ` ${x.year}` : ''} (ISBN ${x.isbn}, ${x.source})`;
 
-  if (e.source !== 'manual') return el('td', { class: 'neben', text: '–' });
   if (e.isbn_status === 'auto' || e.isbn_status === 'confirmed') {
     return el('td', {},
       el('div', { text: `${e.isbn_status === 'auto' ? 'Automatisch verknüpft' : 'Bestätigt'}: ${s ? describe(s) : e.isbn}` }),

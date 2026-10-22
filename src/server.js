@@ -12,6 +12,8 @@ import { notifyManualEntry, notifyChannels } from './notify.js';
 import { lookupIsbn, lookupPending, aiSuggestForEdition } from './isbn-lookup.js';
 import { aiFindIsbn, aiSearchEnabled } from './ai-isbn.js';
 import { googleStatus } from './google-books.js';
+import { allowedCover, refreshCover } from './covers.js';
+import { startRepair, repairStatus } from './repair.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, '..');
@@ -108,18 +110,8 @@ app.get('/api/shelf', requireAccess, (req, res) => {
 // Cover werden über den eigenen Server geladen, damit die Browser der
 // Teilnehmenden keine Verbindung zu Google oder Open Library aufbauen.
 
-const COVER_HOSTS = new Set(['books.google.com', 'books.googleusercontent.com', 'covers.openlibrary.org']);
 const coverDir = path.join(config.dataDir, 'covers');
 fs.mkdirSync(coverDir, { recursive: true });
-
-function allowedCover(url) {
-  try {
-    const u = new URL(url);
-    return u.protocol === 'https:' && COVER_HOSTS.has(u.hostname) ? u.toString() : null;
-  } catch {
-    return null;
-  }
-}
 
 app.get('/api/cover', requireAccess, async (req, res) => {
   const url = allowedCover(String(req.query.u || ''));
@@ -130,7 +122,7 @@ app.get('/api/cover', requireAccess, async (req, res) => {
   try {
     const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
     const type = r.headers.get('content-type') || '';
-    if (!r.ok || !type.startsWith('image/') || !allowedCover(r.url)) return res.status(404).end();
+    if (!r.ok || !type.startsWith('image/') || !allowedCover(r.url, { redirect: true })) return res.status(404).end();
     const buf = Buffer.from(await r.arrayBuffer());
     if (buf.length > 2 * 1024 * 1024) return res.status(413).end();
     fs.writeFileSync(file, buf);
@@ -355,6 +347,7 @@ app.get('/api/admin/overview', (req, res) => {
   res.json({
     ai: aiStatus(),
     aiSearch: aiSearchEnabled(),
+    repair: repairStatus(),
     notify: notifyChannels(),
     warnings: config.secretIsRandom ? ['APP_SECRET ist nicht gesetzt. Nach einem Neustart müssen alle den Zugangscode neu eingeben und können ihre Auswahl nicht mehr ändern.'] : [],
     review: editions
@@ -374,6 +367,12 @@ app.get('/api/admin/overview', (req, res) => {
     flagged,
   });
 });
+
+app.post('/api/admin/repair', (req, res) => {
+  res.json({ started: startRepair(), ...repairStatus() });
+});
+
+app.get('/api/admin/repair', (req, res) => res.json(repairStatus()));
 
 app.get('/api/admin/google-status', async (req, res) => {
   res.json(await googleStatus(req.query.force === '1'));
@@ -438,6 +437,8 @@ app.post('/api/admin/editions/:id/isbn', async (req, res) => {
     db.prepare("UPDATE editions SET isbn = ?, isbn_status = 'confirmed', language = COALESCE(language, ?), cover = COALESCE(cover, ?) WHERE id = ?")
       .run(s.isbn, s.language || null, s.cover || null, id);
     db.prepare('UPDATE works SET cover = COALESCE(cover, ?) WHERE id = (SELECT work_id FROM editions WHERE id = ?)').run(s.cover || null, id);
+    const workId = db.prepare('SELECT work_id FROM editions WHERE id = ?').get(id)?.work_id;
+    if (workId) refreshCover(workId).catch(() => {});
   } else if (action === 'reject') {
     db.prepare("UPDATE editions SET isbn = NULL, isbn_status = 'rejected' WHERE id = ?").run(id);
   } else if (action === 'ai') {
@@ -479,6 +480,7 @@ app.post('/api/admin/works/:id/isbn', (req, res) => {
   const raw = cleanIsbn(req.body?.isbn);
   if (raw && !linkForIsbn(raw)) return res.status(400).json({ error: 'Das ist keine gültige ISBN (10 oder 13 Stellen, Prüfziffer prüfen).' });
   db.prepare('UPDATE works SET isbn_override = ? WHERE id = ?').run(raw || null, Number(req.params.id));
+  if (raw) refreshCover(Number(req.params.id)).catch(() => {});
   res.json({ ok: true });
 });
 

@@ -45,10 +45,10 @@ export function searchLink(title, authors) {
   return { url: `${BASE}/s?k=${encodeURIComponent(q)}&i=stripbooks`, exact: false };
 }
 
-// Wählt für jedes Werk die beste Ausgabe: vom Admin gesetzte ISBN, sonst die
+// Wählt für jedes Werk die beste ISBN: vom Admin gesetzte ISBN, sonst die
 // deutsche Ausgabe mit den meisten Nennungen, sonst die meistgenannte mit ISBN.
-export function amazonLinks() {
-  const works = db.prepare('SELECT id, title, authors, isbn_override FROM works').all();
+export function bestIsbnByWork() {
+  const works = db.prepare('SELECT id, isbn_override FROM works').all();
   const editions = db.prepare(`
     SELECT e.work_id, e.isbn, e.language, COUNT(v.id) AS votes
     FROM editions e LEFT JOIN votes v ON v.edition_id = e.id
@@ -58,10 +58,20 @@ export function amazonLinks() {
   `).all();
   const best = new Map();
   for (const e of editions) if (!best.has(e.work_id)) best.set(e.work_id, e.isbn);
-
   const result = new Map();
   for (const w of works) {
     const isbn = w.isbn_override || best.get(w.id);
+    if (isbn) result.set(w.id, isbn);
+  }
+  return result;
+}
+
+export function amazonLinks() {
+  const works = db.prepare('SELECT id, title, authors FROM works').all();
+  const isbns = bestIsbnByWork();
+  const result = new Map();
+  for (const w of works) {
+    const isbn = isbns.get(w.id);
     result.set(w.id, (isbn && linkForIsbn(isbn)) || searchLink(w.title, w.authors));
   }
   return result;
