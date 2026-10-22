@@ -547,7 +547,12 @@ const page = (file) => (req, res) => res.sendFile(path.join(root, 'views', file)
 app.get('/', page('index.html'));
 app.get('/ergebnisse', page('ergebnisse.html'));
 app.get('/datenschutz', page('datenschutz.html'));
-app.use(express.static(path.join(root, 'public'), { index: false, maxAge: '1h' }));
+// JS und CSS bei jedem Aufruf auf Aktualität prüfen (ETag), damit nach einem
+// Deploy nie eine alte Version aus dem Browser-Cache läuft
+app.use(express.static(path.join(root, 'public'), {
+  index: false,
+  setHeaders: (res) => res.set('Cache-Control', 'no-cache'),
+}));
 
 app.listen(config.port, () => {
   console.log(`Must-Read-Regal läuft auf Port ${config.port}`);
