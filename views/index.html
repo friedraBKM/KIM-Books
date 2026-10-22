@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Must-Read-Regal – Bücher eintragen</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="kopf">
+    <div class="wrap">
+      <a class="marke" href="/"><b>MUST-READ-REGAL</b><span>KI Masterclass</span></a>
+      <nav class="nav" aria-label="Hauptnavigation">
+        <a href="/" aria-current="page">Eintragen</a>
+        <a href="/ergebnisse">Ergebnisse</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="buehne">
+    <div class="wrap">
+      <div class="text">
+        <div class="kicker">Buchumfrage · anonym · 2 Minuten</div>
+        <h1>Drei Bücher, die dein Leben verändert haben.</h1>
+        <p>Jeder von uns hat diese Bücher: Man liest sie, und danach denkt oder handelt man anders. In dieser Masterclass sitzen rund 150 Menschen mit genau solchen Erfahrungen. Hier sammeln wir sie, damit jede und jeder neue Impulse mitnimmt.</p>
+        <p>Gesucht sind keine Bestsellerlisten-Tipps, sondern deine echten Wendepunkte. Die Bücher, die man im Regal haben muss.</p>
+      </div>
+      <ol class="schritte">
+        <li><b>01</b><span>Titel oder Autor suchen – oder aus dem Regal übernehmen</span></li>
+        <li><b>02</b><span>Richtiges Buch auswählen</span></li>
+        <li><b>03</b><span>In einem Satz sagen, warum</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="gate" class="wrap" hidden>
+    <div class="karte code-box">
+      <form class="feld">
+        <label for="code">Zugangscode der Masterclass</label>
+        <input id="code" type="password" autocomplete="off" required>
+        <div class="neben" data-msg role="alert"></div>
+        <div><button class="voll" type="submit">Weiter</button></div>
+      </form>
+    </div>
+  </section>
+
+  <main id="inhalt" class="wrap" hidden>
+    <div id="status" role="status"></div>
+
+    <div class="zeile">
+      <h2>Deine Must-Reads</h2>
+      <span class="neben" id="zaehler">0 von 3 ausgewählt</span>
+    </div>
+
+    <div id="auswahl" class="stapel"></div>
+
+    <section id="hinzufuegen" class="karte tuerkis stapel eng">
+      <div class="kicker">Buch hinzufügen</div>
+      <form id="suche" class="feld">
+        <label for="q">Titel oder Autor</label>
+        <div class="suchzeile">
+          <input id="q" type="search" autocomplete="off" placeholder="z. B. Kahneman oder Deep Work" required minlength="2">
+          <button class="voll" type="submit">Suchen</button>
+        </div>
+      </form>
+      <div id="treffer"></div>
+
+      <form id="manuell" class="feld" hidden>
+        <div class="hinweis klein">Du findest dein Buch nicht? Trag es selbst ein. Wir prüfen den Eintrag kurz und ordnen ihn zu.</div>
+        <label for="m-titel">Titel</label>
+        <input id="m-titel" type="text" maxlength="200" required>
+        <label for="m-autor">Autor oder Autorin</label>
+        <input id="m-autor" type="text" maxlength="200" required>
+        <div class="knoepfe">
+          <button class="voll" type="submit">Übernehmen</button>
+          <button class="sekundaer" type="button" id="manuell-abbrechen">Abbrechen</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="regal-bereich" class="stapel eng" hidden>
+      <h3>Schon im Regal – mit einem Klick übernehmen</h3>
+      <div id="regal" class="regalliste"></div>
+    </section>
+
+    <div class="zeile abschluss">
+      <p class="neben schmal">Anonym, ohne Anmeldung. Auf diesem Gerät kannst du deine Auswahl später noch ändern. Zuordnung und Kategorien erstellt eine KI. <a href="/datenschutz">Datenschutzhinweis</a></p>
+      <button class="primaer" id="absenden" type="button" disabled>Meine Bücher eintragen</button>
+    </div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Must-Read-Regal – Admin</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/admin.js"></script>
+</head>
+<body>
+  <header class="kopf admin-kopf">
+    <div class="wrap">
+      <a class="marke" href="/admin"><b>MUST-READ-REGAL</b><span class="kicker">Admin</span></a>
+      <nav class="nav" aria-label="Admin">
+        <a class="sekundaer" href="/ergebnisse">Ergebnisse ansehen</a>
+        <a class="sekundaer" href="/api/admin/export.csv">CSV-Export</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div id="meldung" role="status"></div>
+
+    <section class="karte tuerkis zeile" id="ki">
+      <div class="stapel eng fuellen">
+        <div class="kicker">KI-Abgleich</div>
+        <h3 id="ki-titel">Wird geladen …</h3>
+        <div class="neben" id="ki-text"></div>
+      </div>
+      <button class="primaer" type="button" id="ki-start">Jetzt neu abgleichen</button>
+    </section>
+
+    <div id="warnungen" class="stapel eng"></div>
+
+    <section class="stapel eng">
+      <h2>Manuell eingetragen – bitte prüfen</h2>
+      <p class="neben schmal">Diese Bücher wurden ohne Treffer in der Buchsuche eingetragen. Titel und Autor bei Bedarf korrigieren, dann bestätigen. Die KI ordnet sie beim nächsten Abgleich zu.</p>
+      <div class="tabelle" id="pruefen"></div>
+    </section>
+
+    <section class="stapel eng">
+      <h2>Von der KI zusammengeführt</h2>
+      <p class="neben schmal">Du musst nichts tun. Liegt die KI daneben: „Trennen“ – die Ausgabe steht dann wieder für sich und wird nicht erneut zusammengeführt.</p>
+      <div class="tabelle" id="zusammengefuehrt"></div>
+    </section>
+
+    <section class="stapel eng">
+      <h2>Bücher und Kategorien</h2>
+      <p class="neben schmal">Eine Kategorie, die du hier änderst, behält die KI künftig bei.</p>
+      <div class="tabelle" id="werke"></div>
+    </section>
+
+    <section class="stapel eng">
+      <h2>„Warum“-Sätze zur Prüfung</h2>
+      <p class="neben schmal">Von der KI markiert (z. B. Namen, Werbung, sensible Angaben). Markierte Sätze sind ausgeblendet, bis du sie freigibst.</p>
+      <div class="tabelle" id="saetze"></div>
+    </section>
+  </main>
+</body>
+</html>

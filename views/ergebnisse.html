@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Must-Read-Regal – Ergebnisse</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/results.js"></script>
+</head>
+<body>
+  <header class="kopf">
+    <div class="wrap">
+      <a class="marke" href="/"><b>MUST-READ-REGAL</b><span>KI Masterclass</span></a>
+      <nav class="nav" aria-label="Hauptnavigation">
+        <a href="/">Eintragen</a>
+        <a href="/ergebnisse" aria-current="page">Ergebnisse</a>
+        <button class="sekundaer" type="button" id="praesentation">Präsentationsmodus</button>
+      </nav>
+    </div>
+  </header>
+
+  <section id="gate" class="wrap" hidden>
+    <div class="karte code-box">
+      <form class="feld">
+        <label for="code">Zugangscode der Masterclass</label>
+        <input id="code" type="password" autocomplete="off" required>
+        <div class="neben" data-msg role="alert"></div>
+        <div><button class="voll" type="submit">Weiter</button></div>
+      </form>
+    </div>
+  </section>
+
+  <main id="inhalt" class="wrap" hidden>
+    <div class="stapel eng">
+      <div class="kicker">Live · aktualisiert sich automatisch</div>
+      <div class="zeile">
+        <h1 class="seitentitel">Das Regal der Masterclass</h1>
+        <button class="textlink" type="button" id="praesentation-ende" hidden>Präsentationsmodus beenden</button>
+      </div>
+    </div>
+
+    <div class="kennzahlen" id="kennzahlen"></div>
+
+    <div class="stapel eng" id="filter-bereich" hidden>
+      <span class="neben">Kategorie (von der KI aus den Nennungen gebildet)</span>
+      <div class="chips" id="chips"></div>
+    </div>
+
+    <section class="rangliste" id="rangliste" aria-label="Rangliste"></section>
+    <p class="neben klein nur-normal">Gleich viele Nennungen ergeben denselben Rang. <a href="/datenschutz">Datenschutzhinweis</a></p>
+  </main>
+</body>
+</html>
