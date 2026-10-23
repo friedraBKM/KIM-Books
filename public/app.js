@@ -41,6 +41,7 @@ async function init() {
   });
   $('manuell-abbrechen').addEventListener('click', () => { $('manuell').hidden = true; });
   $('absenden').addEventListener('click', submit);
+  $('prompt-kopieren').addEventListener('click', copyPrompt);
 
   render();
   loadShelf();
@@ -243,4 +244,22 @@ function showStatus(kind, text, withLink = false, scroll = true) {
   if (withLink) box.append(' ', el('a', { href: '/ergebnisse', text: 'Zu den Ergebnissen' }));
   $('status').replaceChildren(box);
   if (scroll) $('status').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+async function copyPrompt() {
+  const button = $('prompt-kopieren');
+  const text = $('ki-prompt').textContent.trim();
+  try {
+    await navigator.clipboard.writeText(text);
+    button.textContent = 'Kopiert';
+  } catch {
+    // Zwischenablage gesperrt: Text markieren, damit man ihn selbst kopieren kann
+    const range = document.createRange();
+    range.selectNodeContents($('ki-prompt'));
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    button.textContent = 'Markiert – jetzt kopieren';
+  }
+  setTimeout(() => { button.textContent = 'Prompt kopieren'; }, 2500);
 }

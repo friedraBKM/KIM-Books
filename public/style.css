@@ -285,3 +285,13 @@ a.titel:hover { text-decoration: underline; }
 .schalter input { accent-color: var(--aubergine); width: 18px; height: 18px; }
 #pruefen table { min-width: 1080px; }
 #pruefen input[type="text"] { min-width: 180px; }
+
+/* Prompt-Hilfe auf der Erfassungsseite */
+.ki-hilfe { border: 1px solid var(--linie); background: var(--flaeche-karte); }
+.ki-hilfe summary { cursor: pointer; padding: 12px 16px; font-weight: 600; color: var(--text-headline); min-height: 44px; display: flex; align-items: center; gap: 8px; list-style: none; }
+.ki-hilfe summary::-webkit-details-marker { display: none; }
+.ki-hilfe summary::before { content: '+'; font-weight: 700; width: 16px; }
+.ki-hilfe[open] summary::before { content: '–'; }
+.ki-hilfe-inhalt { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 10px; }
+.ki-hilfe-inhalt p { margin: 0; }
+.prompt { background: var(--flaeche-leise); border-left: 3px solid var(--linie-betont); padding: 12px 14px; font-size: 15px; user-select: all; }
