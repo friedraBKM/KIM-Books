@@ -337,3 +337,6 @@ main.turm-seite { display: flex; flex-direction: row; flex-wrap: wrap; align-ite
 .status.umgesetzt { background: var(--aubergine); border-color: var(--aubergine); color: #ffffff; }
 .status.verworfen { color: var(--text-neben); text-decoration: line-through; }
 .idee-ok { margin: 0; font-size: 14px; font-weight: 600; color: var(--text-headline); }
+
+.nav .badge { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 2px; background: var(--tuerkis); color: #000000; font-size: 12px; font-weight: 700; line-height: 20px; text-align: center; }
+.ideen-hinweis { margin: 0; font-size: 15px; }

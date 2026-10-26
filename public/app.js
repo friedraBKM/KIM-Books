@@ -1,4 +1,4 @@
-import { el, coverImg, api, store, voterToken, ensureAccess } from './common.js';
+import { el, coverImg, api, store, voterToken, ensureAccess, ideaBadge } from './common.js';
 
 const MAX = 3;
 const $ = (id) => document.getElementById(id);
@@ -13,6 +13,7 @@ init();
 
 async function init() {
   const cfg = await ensureAccess($('gate'), $('inhalt'));
+  ideaBadge();
   maxWhy = cfg.maxWhyLength || 280;
 
   try {
@@ -241,7 +242,10 @@ async function submit() {
 
 function showStatus(kind, text, withLink = false, scroll = true) {
   const box = el('div', { class: kind }, text);
-  if (withLink) box.append(' ', el('a', { href: '/ergebnisse', text: 'Zu den Ergebnissen' }));
+  if (withLink) {
+    box.append(' ', el('a', { href: '/ergebnisse', text: 'Zu den Ergebnissen' }));
+    box.append(el('br'), 'Idee für das Regal? ', el('a', { href: '/ideen', text: 'Ab in den Ideenspeicher' }));
+  }
   $('status').replaceChildren(box);
   if (scroll) $('status').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }

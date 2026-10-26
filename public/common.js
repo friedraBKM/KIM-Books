@@ -91,3 +91,19 @@ export async function ensureAccess(gate, content) {
   content.hidden = false;
   return { ...cfg, hasAccess: true };
 }
+
+// Zahl neuer Ideen seit dem letzten Besuch der Ideen-Seite am Menüpunkt „Ideen“
+export async function ideaBadge() {
+  const link = document.querySelector('.nav a[href="/ideen"]');
+  if (!link) return;
+  try {
+    const { ideas } = await api('/api/ideas');
+    const seen = Number(store.get('kim_ideen_seen')) || 0;
+    const fresh = ideas.filter((i) => i.id > seen).length;
+    link.querySelector('.badge')?.remove();
+    if (fresh) {
+      link.append(' ', el('span', { class: 'badge', text: String(fresh) }));
+      link.setAttribute('aria-label', `Ideen, ${fresh} neu`);
+    }
+  } catch { /* ohne Zähler */ }
+}

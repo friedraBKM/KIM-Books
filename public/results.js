@@ -1,4 +1,4 @@
-import { el, coverImg, api, store, ensureAccess } from './common.js';
+import { el, coverImg, api, store, ensureAccess, ideaBadge } from './common.js';
 
 const $ = (id) => document.getElementById(id);
 const REFRESH_MS = 20000;
@@ -13,6 +13,7 @@ init();
 
 async function init() {
   const cfg = await ensureAccess($('gate'), $('inhalt'));
+  ideaBadge();
   amazonTag = cfg.amazonTag || '';
   setupPartnerSwitch();
   $('praesentation').addEventListener('click', () => setPresentation(true));

@@ -29,6 +29,8 @@ function setSort(value) {
 async function load() {
   try {
     ideas = (await api(`/api/ideas?voter=${encodeURIComponent(voterToken())}`)).ideas;
+    // Wer die Ideen-Seite sieht, hat alle Ideen gesehen: Zähler im Menü zurücksetzen
+    if (ideas.length) store.set('kim_ideen_seen', String(Math.max(...ideas.map((i) => i.id))));
     render();
   } catch { /* beim nächsten Intervall erneut */ }
 }
