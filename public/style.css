@@ -83,7 +83,21 @@ a:hover { color: var(--text-headline); }
 /* Kopfband */
 .kopf { border-bottom: 1px solid var(--linie); }
 .kopf .wrap { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; padding-top: 14px; padding-bottom: 14px; }
-.marke { display: flex; align-items: baseline; gap: 12px; text-decoration: none; }
+.marke { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.marke .logo { width: 30px; height: 30px; flex-shrink: 0; }
+.marke b + span { margin-left: 2px; }
+.logo .l-b1, .logo .l-regal { fill: var(--aubergine); }
+.logo .l-band { fill: var(--creme); }
+.logo .l-b2 { fill: var(--tuerkis); }
+.logo .l-b3 { fill: var(--bis); }
+@media (prefers-color-scheme: dark) {
+  .logo .l-b1, .logo .l-regal { fill: var(--creme); }
+  .logo .l-band { fill: var(--aubergine); }
+  .logo .l-b3 { fill: var(--maigruen); }
+}
+.admin-kopf .logo .l-b1, .admin-kopf .logo .l-regal { fill: var(--creme); }
+.admin-kopf .logo .l-band { fill: var(--aubergine); }
+.admin-kopf .logo .l-b3 { fill: var(--maigruen); }
 .marke b { font-family: var(--font-zahl); font-weight: 400; font-size: 30px; letter-spacing: 0.02em; color: var(--text-headline); }
 .marke span { font-size: 13px; font-weight: 500; color: var(--text-neben); }
 .nav { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; font-size: 15px; }
