@@ -309,3 +309,12 @@ a.titel:hover { text-decoration: underline; }
 .ki-hilfe-inhalt { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 10px; }
 .ki-hilfe-inhalt p { margin: 0; }
 .prompt { background: var(--flaeche-leise); border-left: 3px solid var(--linie-betont); padding: 12px 14px; font-size: 15px; user-select: all; }
+
+/* 404-Seite mit Spiel Bücherturm */
+main.turm-seite { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: center; gap: 32px 56px; padding-block: 48px; }
+.turm-geraet { background: var(--flaeche-karte); border: 1px solid var(--linie); padding: 14px; display: flex; flex-direction: column; gap: 10px; width: min(100%, 450px); }
+.turm-geraet canvas { width: 100%; height: auto; aspect-ratio: 420 / 520; display: block; background: var(--flaeche-leise); touch-action: manipulation; cursor: pointer; }
+.turm-leiste { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-neben); }
+.turm-leiste b { font-family: var(--font-zahl); font-weight: 400; font-size: 26px; letter-spacing: 0; color: var(--text-headline); margin-left: 6px; font-variant-numeric: tabular-nums; }
+.turm-text { flex: 1 1 300px; max-width: 440px; display: flex; flex-direction: column; gap: 14px; }
+.turm-text p { margin: 0; }

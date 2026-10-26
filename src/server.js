@@ -555,6 +555,14 @@ app.use(express.static(path.join(root, 'public'), {
   setHeaders: (res) => res.set('Cache-Control', 'no-cache'),
 }));
 
+// Easter Egg: /spiel zeigt den Bücherturm als Einladung, jede unbekannte Seite als 404
+app.get('/spiel', page('404.html'));
+app.use('/api', (req, res) => res.status(404).json({ error: 'Nicht gefunden.' }));
+app.use((req, res) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return res.status(404).end();
+  res.status(404).sendFile(path.join(root, 'views', '404.html'));
+});
+
 app.listen(config.port, () => {
   console.log(`Must-Read-Regal läuft auf Port ${config.port}`);
   const n = db.prepare('SELECT COUNT(DISTINCT voter) AS p, COUNT(*) AS v FROM votes').get();
