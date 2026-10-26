@@ -43,6 +43,10 @@ async function flush() {
   const subject = `Must-Read-Regal: ${books.length} Buch/Bücher manuell eingetragen – bitte prüfen`;
   const text = `Folgende Bücher wurden ohne Treffer in der Buchsuche manuell eingetragen:\n\n${list}\n\nBitte im Admin-Bereich prüfen: ${link}\n`;
 
+  await send(subject, text);
+}
+
+async function send(subject, text) {
   if (mailer) {
     try {
       await mailer.sendMail({ from: config.smtp.from, to: config.notifyEmail, subject, text });
@@ -62,4 +66,25 @@ async function flush() {
       console.error('Webhook-Benachrichtigung fehlgeschlagen:', err.message);
     }
   }
+}
+
+// Neue Ideen im Ideenspeicher, gebündelt wie die manuellen Bücher
+let ideaQueue = [];
+let ideaTimer = null;
+
+export function notifyNewIdea(idea) {
+  if (!mailer && !config.notifyWebhookUrl) return;
+  ideaQueue.push(idea);
+  if (!ideaTimer) ideaTimer = setTimeout(flushIdeas, 2 * 60 * 1000);
+}
+
+async function flushIdeas() {
+  const ideas = ideaQueue;
+  ideaQueue = [];
+  ideaTimer = null;
+  if (!ideas.length) return;
+  const link = config.publicUrl ? `${config.publicUrl}/ideen` : '/ideen';
+  const subject = `Must-Read-Regal: ${ideas.length} neue Idee(n) im Ideenspeicher`;
+  const text = `Neu im Ideenspeicher:\n\n${ideas.map((i) => `- ${i.text}`).join('\n')}\n\nAnsehen: ${link}\n`;
+  await send(subject, text);
 }

@@ -1,4 +1,4 @@
-import { el, api } from './common.js';
+import { el, api, store } from './common.js';
 
 const $ = (id) => document.getElementById(id);
 let aiSearch = false;
@@ -72,6 +72,7 @@ async function load() {
   renderMerges(d.merges);
   renderWorks(d.works, d.categories);
   renderFlagged(d.flagged);
+  renderIdeas(d.ideas || []);
 }
 
 function message(kind, text) {
@@ -296,4 +297,37 @@ function renderFlagged(items) {
       el('button', { class: 'textlink', type: 'button', text: 'Ausblenden', onclick: () => act(() => api(`/api/admin/votes/${v.id}/why`, { method: 'POST', body: { status: 'hidden' } })) }),
     )),
   )), 'Keine markierten Sätze.'));
+}
+
+// Ideenspeicher: Status setzen und löschen (mit Rückfrage in der Zeile)
+const IDEA_STATUS = { neu: 'Neu', geplant: 'Geplant', umgesetzt: 'Umgesetzt', verworfen: 'Verworfen' };
+
+function renderIdeas(ideas) {
+  const seenId = Number(store.get('kim_ideen_gesehen')) || 0;
+  const fresh = ideas.filter((i) => i.id > seenId).length;
+  $('ideen-admin-titel').textContent = fresh ? `Ideenspeicher (${fresh} neu seit deinem letzten Besuch)` : 'Ideenspeicher';
+  if (ideas.length) store.set('kim_ideen_gesehen', String(Math.max(...ideas.map((i) => i.id))));
+
+  $('ideen').replaceChildren(table(['Idee', '+1', 'Status', ''], ideas.map((i) => {
+    const select = el('select', { 'aria-label': `Status für ${i.text}` },
+      ...Object.entries(IDEA_STATUS).map(([value, label]) => el('option', { value, text: label })));
+    select.value = i.status;
+    select.addEventListener('change', () => act(() => api(`/api/admin/ideas/${i.id}/status`, { method: 'POST', body: { status: select.value } })));
+
+    const cell = el('td', {});
+    const askDelete = () => cell.replaceChildren(el('div', { class: 'knoepfe' },
+      el('span', { class: 'neben klein', text: 'Wirklich löschen?' }),
+      el('button', { class: 'voll', type: 'button', text: 'Ja, löschen', onclick: () => act(() => api(`/api/admin/ideas/${i.id}`, { method: 'DELETE' })) }),
+      el('button', { class: 'textlink', type: 'button', text: 'Abbrechen', onclick: () => cell.replaceChildren(deleteButton) }),
+    ));
+    const deleteButton = el('button', { class: 'textlink', type: 'button', text: 'Löschen', onclick: askDelete });
+    cell.append(deleteButton);
+
+    return el('tr', {},
+      el('td', {}, el('div', { class: 'titel', text: i.text }), i.details ? el('div', { class: 'neben klein', text: i.details }) : null),
+      el('td', { text: String(i.votes) }),
+      el('td', {}, select),
+      cell,
+    );
+  }), 'Noch keine Ideen.'));
 }

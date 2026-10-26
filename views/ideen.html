@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Must-Read-Regal – Ideenspeicher</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/ideen.js"></script>
+</head>
+<body>
+  <header class="kopf">
+    <div class="wrap">
+      <a class="marke" href="/"><svg class="logo" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect class="l-b1" x="4" y="8" width="7" height="19"></rect><rect class="l-band" x="4" y="11" width="7" height="2"></rect><rect class="l-b2" x="12" y="12" width="5" height="15"></rect><rect class="l-b3" x="19" y="9" width="5" height="18" transform="rotate(16 19 27)"></rect><rect class="l-regal" x="2" y="27" width="28" height="3"></rect></svg><b>MUST-READ-REGAL</b><span>KI Masterclass</span></a>
+      <nav class="nav" aria-label="Hauptnavigation">
+        <a href="/">Eintragen</a>
+        <a href="/ergebnisse">Ergebnisse</a>
+        <a href="/ideen" aria-current="page">Ideen</a>
+      </nav>
+    </div>
+  </header>
+
+  <section id="gate" class="wrap" hidden>
+    <div class="karte code-box">
+      <form class="feld">
+        <label for="code">Zugangscode der Masterclass</label>
+        <input id="code" type="password" autocomplete="off" required>
+        <div class="neben" data-msg role="alert"></div>
+        <div><button class="voll" type="submit">Weiter</button></div>
+      </form>
+    </div>
+  </section>
+
+  <main id="inhalt" class="wrap" hidden>
+    <div class="stapel eng">
+      <div class="kicker">Ideenspeicher</div>
+      <h1 class="seitentitel">Was soll das Regal noch können?</h1>
+      <p class="neben schmal">Ideen aus der Gruppe landen hier, damit keine verloren geht. Anonym, sofort für alle sichtbar. Gefällt dir eine Idee, gib ihr ein +1.</p>
+    </div>
+
+    <form id="idee-form" class="karte tuerkis stapel eng">
+      <label for="idee-text">Deine Idee in einem Satz</label>
+      <div class="suchzeile">
+        <input id="idee-text" type="text" maxlength="200" required minlength="3" autocomplete="off" placeholder="z. B. Buch des Monats in der Masterclass vorstellen">
+        <button class="voll" type="submit">+ Hinzufügen</button>
+      </div>
+      <details class="idee-details">
+        <summary>Details ergänzen (optional)</summary>
+        <label for="idee-mehr" class="sr-only">Details</label>
+        <textarea id="idee-mehr" rows="3" maxlength="1000" placeholder="Wie stellst du dir das vor? Für wen wäre das hilfreich?"></textarea>
+      </details>
+      <div id="idee-status" role="status"></div>
+    </form>
+
+    <div class="zeile">
+      <h2 id="idee-anzahl">Ideen</h2>
+      <div class="chips" role="group" aria-label="Sortierung">
+        <button type="button" id="sort-neu" aria-pressed="true">Neueste</button>
+        <button type="button" id="sort-beliebt" aria-pressed="false">Beliebteste</button>
+      </div>
+    </div>
+    <section id="ideen-liste" class="ideen-liste" aria-label="Ideen"></section>
+  </main>
+</body>
+</html>

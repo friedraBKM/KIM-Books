@@ -91,6 +91,22 @@ function addColumn(table, column, type) {
 }
 addColumn('editions', 'isbn', 'TEXT');
 addColumn('works', 'isbn_override', 'TEXT');
+// Ideenspeicher
+db.exec(`
+  CREATE TABLE IF NOT EXISTS ideas (
+    id INTEGER PRIMARY KEY,
+    text TEXT NOT NULL,
+    details TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'neu',   -- neu | geplant | umgesetzt | verworfen
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE TABLE IF NOT EXISTS idea_votes (
+    idea_id INTEGER NOT NULL REFERENCES ideas(id) ON DELETE CASCADE,
+    voter TEXT NOT NULL,
+    PRIMARY KEY (idea_id, voter)
+  );
+`);
+
 addColumn('editions', 'isbn_status', 'TEXT');  // auto | suggested | none | confirmed | rejected
 addColumn('editions', 'isbn_suggestion', 'TEXT');  // JSON des gefundenen Treffers
 

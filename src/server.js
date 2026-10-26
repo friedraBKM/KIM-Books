@@ -8,7 +8,8 @@ import { db, transaction, cleanupOrphans, normalize, firstAuthorKey, backupTo } 
 import { searchShelf, searchExternal, rateLimited, backfillIsbns } from './search.js';
 import { amazonLinks, cleanIsbn, validIsbn, linkForIsbn } from './amazon.js';
 import { aiEnabled, aiStatus, reconcile, scheduleReconcile } from './ai.js';
-import { notifyManualEntry, notifyChannels } from './notify.js';
+import { notifyManualEntry, notifyChannels, notifyNewIdea } from './notify.js';
+import { listIdeas, addIdea, toggleVote, setIdeaStatus, deleteIdea, IdeaError } from './ideas.js';
 import { lookupIsbn, lookupPending, aiSuggestForEdition } from './isbn-lookup.js';
 import { aiFindIsbn, aiSearchEnabled } from './ai-isbn.js';
 import { googleStatus } from './google-books.js';
@@ -267,6 +268,40 @@ app.post('/api/submission', requireAccess, (req, res) => {
 
 class UserError extends Error {}
 
+// ---------- Ideenspeicher ----------
+
+const voterFrom = (req) => (validVoterToken(req.query.voter || req.body?.voter) ? voterHash(req.query.voter || req.body.voter) : null);
+
+app.get('/api/ideas', requireAccess, (req, res) => {
+  res.json({ ideas: listIdeas(voterFrom(req)).map(({ mine, ...i }) => ({ ...i, mine })) });
+});
+
+app.post('/api/ideas', requireAccess, (req, res) => {
+  if (rateLimited(`idea:${req.ip}`, 5, 10 * 60 * 1000)) {
+    return res.status(429).json({ error: 'Du hast gerade schon einige Ideen eingereicht. Bitte in ein paar Minuten noch einmal.' });
+  }
+  try {
+    const idea = addIdea(req.body?.text, req.body?.details);
+    notifyNewIdea(idea);
+    res.json({ ok: true, id: idea.id });
+  } catch (err) {
+    if (err instanceof IdeaError) return res.status(400).json({ error: err.message });
+    throw err;
+  }
+});
+
+app.post('/api/ideas/:id/vote', requireAccess, (req, res) => {
+  const voter = voterFrom(req);
+  if (!voter) return res.status(400).json({ error: 'Ungültige Sitzung. Bitte Seite neu laden.' });
+  if (rateLimited(`ideavote:${req.ip}`, 120)) return res.status(429).json({ error: 'Zu viele Klicks. Bitte kurz warten.' });
+  try {
+    res.json({ voted: toggleVote(Number(req.params.id), voter) });
+  } catch (err) {
+    if (err instanceof IdeaError) return res.status(404).json({ error: err.message });
+    throw err;
+  }
+});
+
 // ---------- Ergebnisse ----------
 
 function rankedWorks() {
@@ -349,6 +384,7 @@ app.get('/api/admin/overview', (req, res) => {
     ai: aiStatus(),
     aiSearch: aiSearchEnabled(),
     repair: repairStatus(),
+    ideas: listIdeas(),
     notify: notifyChannels(),
     warnings: config.secretIsRandom ? ['APP_SECRET ist nicht gesetzt. Nach einem Neustart müssen alle den Zugangscode neu eingeben und können ihre Auswahl nicht mehr ändern.'] : [],
     review: editions
@@ -377,6 +413,21 @@ app.get('/api/admin/repair', (req, res) => res.json(repairStatus()));
 
 app.get('/api/admin/google-status', async (req, res) => {
   res.json(await googleStatus(req.query.force === '1'));
+});
+
+app.post('/api/admin/ideas/:id/status', (req, res) => {
+  try {
+    setIdeaStatus(Number(req.params.id), String(req.body?.status || ''));
+    res.json({ ok: true });
+  } catch (err) {
+    if (err instanceof IdeaError) return res.status(400).json({ error: err.message });
+    throw err;
+  }
+});
+
+app.delete('/api/admin/ideas/:id', (req, res) => {
+  deleteIdea(Number(req.params.id));
+  res.json({ ok: true });
 });
 
 app.post('/api/admin/reconcile', async (req, res) => {
@@ -548,6 +599,7 @@ const page = (file) => (req, res) => res.sendFile(path.join(root, 'views', file)
 app.get('/', page('index.html'));
 app.get('/ergebnisse', page('ergebnisse.html'));
 app.get('/datenschutz', page('datenschutz.html'));
+app.get('/ideen', page('ideen.html'));
 // JS und CSS bei jedem Aufruf auf Aktualität prüfen (ETag), damit nach einem
 // Deploy nie eine alte Version aus dem Browser-Cache läuft
 app.use(express.static(path.join(root, 'public'), {
